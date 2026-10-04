@@ -191,29 +191,40 @@ Times are Unix milliseconds. Slugs: `^[a-z0-9][a-z0-9-]{0,62}$`. Usernames: `^[a
 
 ## Labelling screen (decided with the user, 2026-10-04)
 
-The collaborator screen at `/p/:slug` is **prototype A (focus card) plus a collapsible queue drawer**
-(prototype files in `prototypes/`, all three verified in a browser). Confirmed behaviour:
+The collaborator screen at `/p/:slug` is the **Label Studio layout** approved in
+`prototypes/v2-a-label-studio.html` (shadcn-style tokens in plain CSS, self-hosted Geist fonts in
+`public/fonts/`, one screen with no scroll at 1280x900 and 390x844). Layout: header (project, progress
+bar, `Note n of N`, help) / span slots / note card / type chips / footer action bar. Everything
+(types, glosses, span names, which spans are null for which type, statuses) comes from the project's
+schema; nothing is hard-coded. A type's chip gloss is the first clause of its description, truncated.
 
-- Keys `1`–`9` set the type in schema order; `enter`/`u`/`s` save complete/uncertain/skipped; `x` and
-  `n` mark or null the active span; `tab`/`shift+tab` switch span fields; `c` cycles the active
-  field's span status; `j`/`k` and arrows walk the queue; `[`/`]` move to unlabelled records; `z`
-  undoes (through the API); `m` toggles word/character mouse snapping; `\` toggles the drawer; `?`
-  toggles help; `esc` discards the draft.
-- **Web-only rule:** `enter` (complete) is refused while a span that applies to the type is unmarked;
-  the person must mark it or press `n`. `u` and `s` are never gated. This is deliberate and is stated
-  in the help overlay.
-- After a save the screen advances to the next record **without a label** (wrapping once); `z`
-  returns and restores what the save replaced.
-- Proposals are shown only when the project's `show_proposals` is true (**default false**), so
-  independent annotators are not biased by machine suggestions. When shown they sit in a dashed
-  `Proposal — not accepted` block; `p` accepts (a normal, undoable save) and `P` loads the values into
-  the draft. An invalid proposal refuses `p` with the reason.
-- Light theme, 36px serif record text, one highlighted span per field.
-- The hint line guides, it does not report: it names the **first unmarked** field ("mark the value…"),
-  while the active field is the highlighted field row (`tab`/`shift+tab` move it and a toast names it).
-  A mouse drag always writes to the **active** field, so dragging the value's text while `Target` is
-  active overwrites the target's span. That is intended, and it is the one place where the hint and the
-  highlighted row can point at different fields; marking a span auto-advances to the next unmarked field.
+- Tokens: the note is split on whitespace; edge punctuation is trimmed from a token, inner punctuation
+  stays (`215.000` is one token). Offsets are code points. A click sets the active span slot to a word,
+  Shift+click or drag extends it. Overlapping spans are refused inline. Marking auto-advances to the
+  next unmarked applicable slot. A span that is null for the chosen type is shown locked as
+  `none (<type>)` and skipped.
+- Keys (only these): `1`-`9` type (schema order); one letter per span slot (first free letter of the
+  span name, e.g. `t` target, `v` value) and `tab`/`shift+tab` choose the slot; `n` none for the active
+  slot; `c` changes the active span's status (sure/unsure); `enter` complete; `u` unsure; `s` skip;
+  `z` undo; `left`/`right` previous/next note; `up`/`down` + `shift` + `space` mark by keyboard;
+  `?` help; `esc` discard the draft. Every key is printed on its control.
+- Save: `enter` saves `complete` and moves to the **next note in queue order** (the screen opens on the
+  first note without a label). `u` opens the note field, a second `u` saves `uncertain`; `s` saves the
+  first `null_label_statuses` status (type and every span null, no note). Drafts survive `left`/`right`.
+  A persistent chip shows `Not saved` / `Saved, <status>` / `Edited, not saved`; a saved note shows
+  by the chip.
+- **Web-only rule:** complete is refused (inline, at the action bar) while the type is missing or an
+  applicable span is unmarked; the person marks it or presses `n`. `u` and `s` are never gated.
+- **Note (Quet `note` key):** the note field appears on `u`, when a span status is set to
+  `uncertain`, or when a saved note exists. It is required (non-empty) to save `uncertain` or
+  to complete with any span status `uncertain` (gidi's validator rejects those without one). It is
+  written as `note` on the wire label.
+- **Span status (`span_status`):** a span that declares `statuses` shows a sure/unsure toggle
+  (statuses in schema order; `complete` shows as Sure, `uncertain` as Unsure). It is written as
+  `span_status.<span>`; spans that are null for the type carry none.
+- Undo (`z`, through the API) reverts the last draft change or save: a save is undone with `PUT` of the
+  previous label or `DELETE` if there was none.
+- Proposals are not shown on this screen.
 
 ## Quet CLI/TUI (implemented by the Quet agent)
 

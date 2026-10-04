@@ -1,95 +1,73 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>quet · labelling</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/label.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>quet</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/label.css">
 </head>
 <body>
-  <header class="top">
-    <div class="brand"><a href="/" class="home" title="All projects">quet</a><span id="projName"></span></div>
-    <div class="prog">
-      <b id="progTxt" title="record position / records in the queue"></b>
-      <div class="bar"><i id="barDone"></i></div>
-      <span id="counts" class="counts"></span>
-      <span id="loadNote" class="loadnote" hidden></span>
+
+<header>
+  <div class="brand"><a class="brand-link" href="/" title="All projects"><b>quet</b></a><span id="projName"></span></div>
+  <div class="prog">
+    <div class="segs" id="segs" role="progressbar" aria-label="Notes saved" aria-valuemin="0" aria-valuemax="0"></div>
+    <span class="loadnote" id="loadNote" hidden></span>
+    <div class="count" id="count" aria-live="polite"></div>
+  </div>
+  <button class="qbtn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help" aria-label="Help and key list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+</header>
+
+<p id="fatal" class="fatal" role="alert" hidden></p>
+<noscript><p class="fatal">quet needs JavaScript.</p></noscript>
+
+<main id="stage" hidden>
+  <section class="strip" aria-label="Span labels">
+    <div class="strip-top"><span class="strip-title">Spans</span></div>
+    <div class="slots" id="slots"></div>
+    <div class="noterow" id="noteRow" hidden>
+      <label for="noteIn">Note</label>
+      <input id="noteIn" placeholder="What is unclear?" autocomplete="off" maxlength="240" aria-label="What is unclear?">
+      <span class="nh" id="noteHint"></span>
+      <button class="nx" id="noteX" type="button" hidden>Not unsure</button>
     </div>
-    <div class="topbtns">
-      <button id="bQueue" type="button" aria-expanded="false" aria-controls="drawer">Queue <kbd>\</kbd></button>
-      <button id="bUndo" type="button">↶ Undo <kbd>z</kbd></button>
-      <button id="bHelp" type="button">Keys <kbd>?</kbd></button>
+  </section>
+
+  <section class="card a0" id="card" aria-label="Note to label">
+    <div class="note" id="note" aria-label="Note text"></div>
+    <div class="hintrow" id="hintrow"></div>
+  </section>
+
+  <section class="types" id="types" aria-label="Type"></section>
+</main>
+
+<footer id="foot" hidden>
+  <div class="bmsg" id="bmsg" role="status" aria-live="polite" hidden></div>
+  <div class="bar">
+    <div class="bl">
+      <button class="btn nav" type="button" data-act="prev" aria-label="Previous note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span class="lbl">Prev</span></button>
+      <button class="btn nav" type="button" data-act="next" aria-label="Next note"><span class="lbl">Next</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+      <div class="state" id="state" aria-live="polite"></div>
     </div>
-  </header>
-
-  <p id="fatal" class="fatal" role="alert" hidden></p>
-  <noscript><p class="fatal">quet needs JavaScript.</p></noscript>
-
-  <aside id="drawer" class="drawer" aria-label="Queue" aria-hidden="true">
-    <div class="drawer-head">
-      <b>Queue</b>
-      <span id="drawerCount" class="small"></span>
-      <button id="bDrawerClose" type="button" class="close" aria-label="Close the queue">close <kbd>\</kbd></button>
-    </div>
-    <div id="queueList" class="qlist"></div>
-  </aside>
-
-  <main id="stage" class="stage" hidden>
-    <section class="card">
-      <div class="meta"><span id="recMeta"></span><span id="savedChip" class="saved"></span></div>
-      <div id="text" class="hero" aria-label="Record text: click or drag words to mark a span"></div>
-
-      <div id="spans" class="spans"></div>
-      <div class="spantools">
-        <button id="bSelect" type="button">select with keys <kbd>x</kbd></button>
-        <button id="bNull" type="button"><span id="nullTxt">no target</span> <kbd>n</kbd></button>
-        <button id="bField" type="button" hidden>next field <kbd>tab</kbd></button>
-        <button id="bStatus" type="button" hidden>span status <kbd>c</kbd></button>
-        <button id="bSnap" type="button"><span id="snapTxt">snap: words</span> <kbd>m</kbd></button>
-      </div>
-      <div id="hint" class="hint"></div>
-
-      <div id="proposal" class="proposal" hidden></div>
-
-      <nav class="nav">
-        <button id="bPrev" type="button">‹ previous <kbd>k</kbd></button>
-        <button id="bNext" type="button">next <kbd>j</kbd> ›</button>
-        <button id="bOpenPrev" type="button">‹ unlabelled <kbd>[</kbd></button>
-        <button id="bOpenNext" type="button">next unlabelled <kbd>]</kbd> ›</button>
-      </nav>
-    </section>
-
-    <aside class="palette">
-      <h3>Type <span id="typeRange" class="range"></span></h3>
-      <div id="types"></div>
-      <h3>Save as</h3>
-      <div id="statuses"></div>
-      <div id="draft" class="draft"></div>
-      <p class="palette-tip"><kbd>esc</kbd> discards the draft · <kbd>?</kbd> lists every key</p>
-    </aside>
-  </main>
-
-  <div id="dragtip" class="dragtip" hidden></div>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <div id="help" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-    <div class="sheet">
-      <h2 id="helpTitle">Keyboard and mouse</h2>
-      <table id="helpKeys"></table>
-      <h3>Complete needs every target marked</h3>
-      <p><kbd>enter</kbd> (save as complete) is refused while a span that applies to the chosen type is still
-        unmarked. Click or drag the text to mark it, or press <kbd>n</kbd> if there is none.
-        <kbd>u</kbd> (uncertain) and <kbd>s</kbd> (skipped) are never blocked.</p>
-      <p class="small">This is a deliberate difference from the Quet terminal annotator, which would quietly save an
-        unmarked target as <code>null</code> — easy to do by accident when you forgot to mark it.</p>
-      <p class="small">Offsets are counted in Unicode characters (code points), so an emoji counts as one. The end is
-        exclusive: <code>"nước dùng" [22,31)</code> covers characters 22 to 30.</p>
-      <p class="small">Press <kbd>?</kbd> or <kbd>esc</kbd> to close.</p>
+    <div class="br">
+      <button class="btn disc" type="button" data-act="discard" id="bDisc">Discard <kbd class="kb">Esc</kbd></button>
+      <button class="btn" type="button" data-act="undo" id="bUndo">Undo <kbd class="kb">z</kbd></button>
+      <button class="btn" type="button" data-act="skip">Skip <kbd class="kb">s</kbd></button>
+      <button class="btn" type="button" data-act="unsure" id="bUnsure">Unsure <kbd class="kb">u</kbd></button>
+      <button class="btn primary" type="button" data-act="complete">Complete <kbd class="kb"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg></kbd></button>
     </div>
   </div>
+</footer>
 
-  <script type="module" src="/js/label.js"></script>
+<div id="tip" role="tooltip" hidden></div>
+<aside id="help" role="dialog" aria-label="Help" hidden>
+  <div class="hh"><span>Help</span><button class="qbtn" type="button" id="helpClose" aria-label="Close help">Close <kbd class="kb">Esc</kbd></button></div>
+  <div class="hb" id="helpBody"></div>
+</aside>
+
+<script type="module" src="/js/label.js"></script>
 </body>
 </html>
