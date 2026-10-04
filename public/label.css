@@ -134,11 +134,18 @@ main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 
 .hl.unsure{border-bottom-style:dashed}
 .tok.pre{background:color-mix(in oklab,var(--active) 20%,transparent);border-bottom-color:var(--active);border-bottom-style:dotted}
 .tok.cur{box-shadow:0 0 0 2px var(--background),0 0 0 4px var(--ring)}
-.hintrow{flex:none;min-height:24px;display:flex;align-items:center;gap:12px;color:var(--muted-foreground);font-size:14px;flex-wrap:wrap;row-gap:4px}
+/* Alert (shadcn) callouts under the note: message + key legend */
+.hintrow{flex:none;display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.callout{display:flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--muted);color:var(--muted-foreground);font-size:14px;line-height:20px}
+.callout.msg{flex:1 1 320px;min-width:0}
+.callout.msg>.ic{color:var(--foreground)}
+.callout.err{border-color:color-mix(in oklab,var(--destructive) 40%,var(--border));background:color-mix(in oklab,var(--destructive) 6%,var(--card));color:var(--destructive)}
+.callout.err>.ic{color:var(--destructive)}
 .hintrow b{font-weight:500;color:var(--cink,var(--foreground))}
-.hintrow .hk{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-size:13px}
-.hintrow .hk kbd+span,.hintrow .hk span+kbd{margin-left:2px}
-.imsg{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--destructive)}
+.callout.hk{flex:none;gap:4px;font-size:13px}
+.callout.hk kbd+span,.callout.hk span+kbd{margin-left:2px}
+.callout.hk kbd{background:var(--background);border:1px solid var(--border)}
+.imsg{font-weight:500;color:var(--destructive)}
 .imsg.info{color:var(--foreground)}
 
 /* type picker: ToggleGroup outline, 4x2 */

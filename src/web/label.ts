@@ -472,6 +472,10 @@ function renderNote(): void {
 function renderHint(): void {
   const d = cur();
   let h: string;
+  const err = !!imsgState && imsgState.tone !== 'info';
+  const icon = err
+    ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>'
+    : '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
   if (imsgState) h = `<span class="imsg ${imsgState.tone === 'info' ? 'info' : ''}" role="alert">${esc(imsgState.text)}</span>`;
   else {
     const r = recs[idx];
@@ -480,16 +484,16 @@ function renderHint(): void {
     const f = S.spans[k]!;
     if (L && S.null_label_statuses.includes(L.annotation_status) && !dirty(idx)) {
       const names = ['type', ...S.spans.map((x) => x.name)];
-      h = `Skipped: ${names.slice(0, -1).join(', ')}${names.length > 1 ? ' and ' : ''}${names[names.length - 1]} are saved as none. Pick a type to relabel.`;
+      h = `<span>Skipped: ${names.slice(0, -1).join(', ')}${names.length > 1 ? ' and ' : ''}${names[names.length - 1]} are saved as none. Pick a type to relabel.</span>`;
     } else {
-      h =
-        `<span>Click a word to set <b class="s${k % 5}">${esc(spanLabel(f))}</b>. Shift+click or drag takes several words.</span>` +
-        `<span class="hk"><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>word</span> <kbd>Shift</kbd><span>extend</span> <kbd>Space</kbd><span>mark</span>` +
-        (S.spans.length > 1 ? ' <kbd>Tab</kbd><span>switch slot</span>' : '') +
-        '</span>';
+      h = `<span>Click a word to set <b class="s${k % 5}">${esc(spanLabel(f))}</b>. Shift+click or drag takes several words.</span>`;
     }
   }
-  setHTML($.hint, 'hint', h);
+  const keys =
+    '<div class="callout hk"><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>word</span> <kbd>Shift</kbd><span>extend</span> <kbd>Space</kbd><span>mark</span>' +
+    (S.spans.length > 1 ? ' <kbd>Tab</kbd><span>switch slot</span>' : '') +
+    '</div>';
+  setHTML($.hint, 'hint', `<div class="callout msg${err ? ' err' : ''}">${icon}${h}</div>${keys}`);
 }
 
 function renderTypes(): void {
