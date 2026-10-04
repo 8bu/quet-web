@@ -1,6 +1,6 @@
 # Labelling screen audit (hands-on, first-time collaborator)
 
-Scope: the live labelling screen `https://quet.8bu.dev/p/gidi-hv01-test` (TEST project, 150 real gidi notes, schema
+Scope: the live labelling screen `https://<your-domain>/p/gidi-hv01-test` (TEST project, 150 real gidi notes, schema
 [`annotation-v2.quet.yaml`](../../../gidi/configs/annotation-v2.quet.yaml): 8 types, spans `target` + `value`).
 Driven with the omp `browser` tool in headless Chromium at 1280x900 (main), 1440x900 and 390x844. Labelled 14 notes
 mouse-only and keyboard-only, plus revise / undo / skip / error probes. App source cited as `file:line` in this repo;

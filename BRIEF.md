@@ -13,7 +13,7 @@ example files are in `/Users/8bu/Projects/quet/examples/annotation/`.
 
 1. Hosted on a Cloudflare **Worker** (no Pages project; Pages is deprecated) with **D1** for storage.
 2. Allow outside collaborators.
-3. Domain: **quet.8bu.dev**.
+3. Domain: a custom domain on a Cloudflare zone, set at deploy time (`QUET_DOMAIN`).
 4. The admin (via a Cloudflare admin session, no app-level auth for the admin) creates annotation
    projects **from the Quet TUI**: dataset (queue), schema, proposals. So the Quet TUI/CLI in
    `/Users/8bu/Projects/quet` must be updated too. quet-web has an **admin dashboard** where the admin

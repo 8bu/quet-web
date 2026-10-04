@@ -16,7 +16,7 @@ const env = (over: Partial<Env> = {}): Env =>
   }) as unknown as Env;
 
 const request = (headers: Record<string, string> = {}): Request =>
-  new Request('https://quet.8bu.dev/api/admin/whoami', { headers });
+  new Request('https://quet.example.com/api/admin/whoami', { headers });
 
 describe('verifyAccess', () => {
   it('accepts exactly DEV_ADMIN_BYPASS=1 and reports the dev identity', async () => {

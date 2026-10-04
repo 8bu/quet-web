@@ -42,6 +42,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - name: Require QUET_DOMAIN
+        env:
+          QUET_DOMAIN: ${{ secrets.QUET_DOMAIN }}
+        run: |
+          if [ -z "$QUET_DOMAIN" ]; then
+            echo "::error::Secret QUET_DOMAIN is not set. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
       - run: npm ci
       - run: npm run build
       - name: Apply D1 migrations
@@ -55,4 +63,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: deploy --domain ${{ secrets.QUET_DOMAIN }}

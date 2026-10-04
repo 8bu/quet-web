@@ -3,3 +3,4 @@ node_modules/
 public/js/
 .dev.vars
 .DS_Store
+.deploy.env

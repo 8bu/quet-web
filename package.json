@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build-web.mjs",
     "dev": "node scripts/build-web.mjs && wrangler dev",
-    "deploy": "node scripts/build-web.mjs && wrangler deploy",
+    "deploy": "node scripts/deploy.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "migrate:local": "wrangler d1 migrations apply quet-web --local",

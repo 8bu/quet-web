@@ -2,7 +2,7 @@
 
 quet-web is the web companion of [Quet](https://github.com/8bu/quet), the terminal labelling tool (quet-tui).
 Outside collaborators use it to label text in a browser. They do not need to install Quet.
-It runs on a Cloudflare Worker with a D1 database at `quet.8bu.dev`.
+It runs on a Cloudflare Worker with a D1 database on a custom domain.
 
 ![Labelling demo](docs/media/labeller-demo.gif)
 
@@ -42,8 +42,9 @@ npm run dev
 
 Run the checks with `npm run typecheck` and `npx vitest run`.
 
-GitHub Actions runs the checks, versions each release, and deploys it. To deploy by hand, run
-`npm run deploy`. See [Release](docs/deploy.md#release) for the full flow.
+GitHub Actions runs the checks, versions each release, and deploys it. To deploy by hand, set `QUET_DOMAIN` (the custom domain, for example
+`quet.example.com`) in your shell or in a gitignored `.deploy.env` file (see `.deploy.env.example`),
+then run `npm run deploy`. In GitHub, set the repository secret `QUET_DOMAIN`. See [Release](docs/deploy.md#release) for the full flow.
 
 ## Docs
 

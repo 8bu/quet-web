@@ -1,7 +1,8 @@
 # Deployment record
 
 Everything below was done in the Cloudflare dashboard / `wrangler` for this project. The account is
-`71Z` (`d3fc0198c8197514b262b12e3c6639a4`), the zone is `8bu.dev` (already on Cloudflare).
+`71Z` (`d3fc0198c8197514b262b12e3c6639a4`), the zone is the one that holds your custom domain (already on Cloudflare). The domain itself is
+not stored in the repo. See [Custom domain](#custom-domain).
 
 ## Worker
 
@@ -9,7 +10,7 @@ Everything below was done in the Cloudflare dashboard / `wrangler` for this proj
 | --- | --- |
 | Worker name | `quet-web` |
 | Entry | `src/worker/index.ts` (Hono), assets from `public/` with `run_worker_first: true` |
-| Custom domain | `quet.8bu.dev` (route `{ "pattern": "quet.8bu.dev", "custom_domain": true }`) |
+| Custom domain | `QUET_DOMAIN`, passed to `wrangler deploy --domain` (no `routes` in `wrangler.jsonc`) |
 | Deployed version | recorded by `wrangler deploy`; rerun `npm run deploy` to publish |
 | Production vars | `ACCESS_TEAM_DOMAIN=71zone.cloudflareaccess.com`, `ACCESS_AUD=<AUD below>` |
 | `DEV_ADMIN_BYPASS` | **never** in `wrangler.jsonc`; only in the gitignored `.dev.vars` for local work |
@@ -26,6 +27,20 @@ Everything below was done in the Cloudflare dashboard / `wrangler` for this proj
 Commands used: `npx wrangler d1 migrations apply quet-web --local` and `--remote`,
 `npx wrangler d1 create quet-web`, `npm run deploy`.
 
+## Custom domain
+
+`wrangler.jsonc` has no `routes`, so the repo names no domain. `npm run deploy` runs
+`wrangler deploy --domain "$QUET_DOMAIN"`. In wrangler 4 this flag adds the route
+`{ "pattern": "<domain>", "custom_domain": true }` to the deploy, the same as the old config entry.
+Set `QUET_DOMAIN` in one of two ways:
+
+- Shell: `QUET_DOMAIN=quet.example.com npm run deploy`.
+- File: copy `.deploy.env.example` to `.deploy.env` (gitignored) and set `QUET_DOMAIN=quet.example.com`.
+
+`npm run deploy` exits with an error if `QUET_DOMAIN` is unset or is not a plain host name. Extra
+arguments go to wrangler, so `npm run deploy -- --dry-run` checks the command without a deploy.
+`wrangler dev` has no domain, so it keeps the local host.
+
 ## Zero Trust Access
 
 Team domain `71zone.cloudflareaccess.com` (team name `71ZONE`) already existed.
@@ -33,7 +48,7 @@ Team domain `71zone.cloudflareaccess.com` (team name `71ZONE`) already existed.
 | Item | Value |
 | --- | --- |
 | Application | `quet-web admin`, self-hosted, session 24 h |
-| Destinations | `quet.8bu.dev/admin*`, `quet.8bu.dev/api/admin*` |
+| Destinations | `<your-domain>/admin*`, `<your-domain>/api/admin*` |
 | Policy 1 | `Admin email` — action **Allow** — selector **Emails** = `hvanlong@pm.me` |
 | Policy 2 | `Quet CLI service token` — action **Service Auth** — selector **Service Token** = `quet-cli-2` |
 | Application audience (AUD) tag | `e21c779676bc9cfb8b602604ca27665d23246c3978551ae3861674767e7193b8` (read from the live Access meta JWT, not from a screenshot) |
@@ -55,7 +70,7 @@ Created in Zero Trust → Access controls → Service credentials → Service To
 | Expiry | non-expiring |
 
 The Quet CLI/TUI sends `CF-Access-Client-Id` / `CF-Access-Client-Secret` on every `/api/admin` call.
-`quet web remote add origin https://quet.8bu.dev` plus `quet web login origin` (two lines on stdin)
+`quet web remote add origin https://<your-domain>` plus `quet web login origin` (two lines on stdin)
 stores the pair; `QUET_WEB_URL`, `QUET_ACCESS_CLIENT_ID` and `QUET_ACCESS_CLIENT_SECRET` override it
 for one shell.
 
@@ -66,7 +81,7 @@ for one shell.
 >    received with `403 {"error":"forbidden: valid Cloudflare Access credentials required"}`, because the
 >    audience it checked was not the application's. The live value is in the table above; it comes from
 >    decoding the `meta` JWT in an Access redirect, which is the only trustworthy source:
->    `curl -sD - -o /dev/null https://quet.8bu.dev/api/admin/whoami | grep -i ^location` then base64-decode
+>    `curl -sD - -o /dev/null https://<your-domain>/api/admin/whoami | grep -i ^location` then base64-decode
 >    the `meta` payload and read `aud`.
 > 2. The service-token policy saved with a token whose secret no longer matched. Access answered `302`
 >    with `service_token_status: false`, and the token's page showed `Last Seen: Not Seen Yet`. A token's
@@ -76,7 +91,7 @@ for one shell.
 >    exists for this application.
 >
 > Check: `curl -H "CF-Access-Client-Id: $QUET_ACCESS_CLIENT_ID" -H
-> "CF-Access-Client-Secret: $QUET_ACCESS_CLIENT_SECRET" https://quet.8bu.dev/api/admin/whoami` returns
+> "CF-Access-Client-Secret: $QUET_ACCESS_CLIENT_SECRET" https://<your-domain>/api/admin/whoami` returns
 > `200 {"identity":"58b3828effe3b0e4192adb700c84f426.access"}`; with no credentials the same URL returns
 > `302` to the Access login.
 
@@ -100,7 +115,7 @@ for one shell.
 
 ## Production end-to-end (2026-10-04)
 
-The whole loop was run against `quet.8bu.dev`, not just local: `quet web push` published the multi-span
+The whole loop was run against the production domain, not just local: `quet web push` published the multi-span
 example as project `hello` (5 items, 2 span fields), the admin API created collaborator `reader` with a
 generated password and assigned it, a real browser signed in at `/`, opened `/p/hello` and labelled two
 records (type key `1`, drag-selected spans, `Enter` to save), and `quet web pull --project hello --user
@@ -144,6 +159,15 @@ that token creates, so the release PR does not run CI by itself. Close and reope
 on it. For the same reason, the deploy is called directly from the `Release` workflow and not from a
 `release: published` trigger.
 
+### Repository secret for the domain
+
+Add the secret `QUET_DOMAIN` in Settings → Secrets and variables → Actions (repository or
+`production` environment). The value is the host name of the custom domain, for example
+`quet.example.com` (no scheme, no path). It is a secret, not a variable, so GitHub masks it in the
+public deploy logs.
+
+`deploy.yml` stops with an error before the deploy step if the secret is empty.
+
 ### Repository secrets
 
 Add one secret in Settings → Secrets and variables → Actions:
@@ -164,6 +188,6 @@ and approve pull requests". Release Please needs it to open the release PR.
 1. Open Cloudflare dashboard → My Profile → API Tokens → Create Token.
 2. Pick the **Edit Cloudflare Workers** template.
 3. Add one more permission: Account → **D1** → **Edit**. Migrations need it.
-4. Under Account Resources, include account `71Z`. Under Zone Resources, include zone `8bu.dev`
-   (the template already sets this for the custom domain route).
+4. Under Account Resources, include account `71Z`. Under Zone Resources, include the zone of your
+   custom domain (the template already sets this for the custom domain route).
 5. Create the token, copy it once, and save it as the `CLOUDFLARE_API_TOKEN` secret.

@@ -32,8 +32,10 @@ function cookieValue(header: string | null, name: string): string | null {
  *
  * `DEV_ADMIN_BYPASS=1` opens `/api/admin/*` and `/admin*` without Access. It must only ever be set
  * in `.dev.vars` (gitignored, never uploaded by `wrangler deploy`). There is deliberately no host
- * check: with a `custom_domain` route, `wrangler dev` rewrites both `request.url` and the `Host`
- * header to `quet.8bu.dev`, so a local request is indistinguishable from a production one.
+ * check. `wrangler.jsonc` has no route (`npm run deploy` passes the custom domain with `--domain`),
+ * so `wrangler dev` keeps the local host. A `custom_domain` route in the config would make
+ * `wrangler dev` rewrite `request.url` and `Host` to that domain, and a local request would then
+ * look like a production one.
  */
 export async function verifyAccess(request: Request, env: Env): Promise<{ identity: string } | null> {
   if (env.DEV_ADMIN_BYPASS === '1') return { identity: 'dev' };

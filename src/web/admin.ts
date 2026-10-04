@@ -84,7 +84,7 @@ interface Col<T> {
 /* Constants & state                                                   */
 /* ------------------------------------------------------------------ */
 
-const PUBLIC_ORIGIN = 'https://quet.8bu.dev';
+const PUBLIC_ORIGIN = location.origin;
 const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 
 const shareUrl = (slug: string): string => `${PUBLIC_ORIGIN}/p/${slug}`;
