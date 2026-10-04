@@ -4,98 +4,135 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="light dark">
   <title>Quet admin</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+  <script src="/theme-init.js"></script>
+  <link rel="stylesheet" href="/tokens.css">
   <link rel="stylesheet" href="/admin.css">
   <script type="module" src="/js/admin.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <h1>Quet <span class="muted">admin</span></h1>
-    <div class="filter">
-      <label for="filter" class="sr-only">Filter projects and collaborators</label>
-      <input id="filter" type="search" placeholder="Filter projects &amp; collaborators" autocomplete="off" spellcheck="false" aria-keyshortcuts="/">
-      <kbd title="Press / to focus the filter">/</kbd>
-    </div>
-    <div class="who">
-      <span id="who" class="muted" aria-live="polite"></span>
-      <button type="button" id="refresh" title="Reload all data">Refresh</button>
+  <header id="topbar" class="topbar">
+    <div class="topbar-in">
+      <div class="crumb-wrap">
+        <span class="brand">Quet</span>
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <ol id="crumbs">
+            <li><span aria-current="page">Admin</span></li>
+          </ol>
+        </nav>
+      </div>
+
+      <div class="filter">
+        <svg class="ic filter-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <label for="filter" class="sr-only">Filter projects and collaborators</label>
+        <input id="filter" class="input" type="search" placeholder="Filter projects &amp; collaborators" autocomplete="off" spellcheck="false" aria-keyshortcuts="/">
+        <kbd title="Press / to focus the filter">/</kbd>
+      </div>
+
+      <div class="top-end">
+        <span id="who" class="who" aria-live="polite"></span>
+        <button type="button" id="refresh" class="btn outline sm" title="Reload all data">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          <span class="lbl">Refresh</span>
+        </button>
+        <div id="theme-picker"></div>
+      </div>
     </div>
   </header>
 
-  <noscript><p class="notice error">The admin dashboard needs JavaScript.</p></noscript>
+  <noscript><p class="gate-noscript">The admin dashboard needs JavaScript.</p></noscript>
 
-  <div id="gate" class="gate" role="alert" hidden></div>
+  <div id="gate" class="gate inline-err has" role="alert" hidden></div>
 
   <div id="app" class="layout" hidden>
     <main id="main" class="main">
       <div id="secrets" class="secrets" aria-live="polite"></div>
 
-      <section aria-labelledby="projects-h">
-        <div class="section-head">
-          <h2 id="projects-h">Projects</h2>
-          <span id="projects-count" class="muted"></span>
+      <section class="card" aria-labelledby="projects-h">
+        <div class="card-header">
+          <div>
+            <h2 id="projects-h" class="card-title">Projects <span id="projects-count" class="badge secondary count"></span></h2>
+            <p class="card-desc">Created and updated from the Quet CLI (<code>quet web push</code>).</p>
+          </div>
         </div>
-        <div id="projects-err" class="inline-err" role="alert"></div>
-        <div class="table-wrap">
-          <table id="projects-table">
-            <thead id="projects-head"></thead>
-            <tbody id="projects-body"></tbody>
-          </table>
+        <div id="projects-err" class="inline-err card-alert" role="alert"></div>
+        <div class="card-content flush">
+          <div class="table-wrap">
+            <table id="projects-table">
+              <thead id="projects-head"></thead>
+              <tbody id="projects-body"></tbody>
+            </table>
+          </div>
         </div>
-        <p class="hint muted">Projects are created and updated from the Quet CLI (<code>quet web push</code>).</p>
       </section>
 
-      <section aria-labelledby="collabs-h">
-        <div class="section-head">
-          <h2 id="collabs-h">Collaborators</h2>
-          <span id="collabs-count" class="muted"></span>
+      <section class="card" aria-labelledby="collabs-h">
+        <div class="card-header">
+          <div>
+            <h2 id="collabs-h" class="card-title">Collaborators <span id="collabs-count" class="badge secondary count"></span></h2>
+            <p class="card-desc">People who sign in at the public site to label the projects assigned to them.</p>
+          </div>
         </div>
 
         <form id="new-collab" class="new-collab" autocomplete="off" novalidate>
           <fieldset>
             <legend>New collaborator</legend>
-            <label>Username
-              <input id="nc-username" name="username" type="text" required maxlength="32"
-                     pattern="^[a-z0-9][a-z0-9._-]{1,31}$" autocapitalize="none" autocorrect="off" spellcheck="false"
-                     aria-describedby="nc-help">
-            </label>
-            <label>Password <span class="muted">(optional)</span>
-              <input id="nc-password" name="password" type="password" autocomplete="new-password"
-                     placeholder="blank = generate" aria-describedby="nc-help">
-            </label>
-            <button type="submit" class="primary">Create</button>
-            <span id="nc-err" class="inline-err" role="alert"></span>
-            <p id="nc-help" class="hint muted">Username: 2&ndash;32 chars, lowercase letters, digits, <code>.</code> <code>_</code> <code>-</code>, starting with a letter or digit. Leave the password blank to have the server generate one.</p>
+            <div class="form-row">
+              <div class="field">
+                <label for="nc-username">Username</label>
+                <input id="nc-username" class="input" name="username" type="text" required maxlength="32"
+                       pattern="^[a-z0-9][a-z0-9._-]{1,31}$" autocapitalize="none" autocorrect="off" spellcheck="false"
+                       aria-describedby="nc-help">
+              </div>
+              <div class="field">
+                <label for="nc-password">Password <span class="optional">(optional)</span></label>
+                <input id="nc-password" class="input" name="password" type="password" autocomplete="new-password"
+                       placeholder="blank = generate" aria-describedby="nc-help">
+              </div>
+              <button type="submit" class="btn primary">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+                Create
+              </button>
+            </div>
+            <p id="nc-help" class="hint">Username: 2 to 32 characters, lowercase letters, digits, <code>.</code> <code>_</code> <code>-</code>, starting with a letter or digit. Leave the password blank to have the server generate one.</p>
+            <div id="nc-err" class="inline-err" role="alert"></div>
           </fieldset>
         </form>
 
-        <div id="collabs-err" class="inline-err" role="alert"></div>
-        <div class="table-wrap">
-          <table id="collabs-table">
-            <thead id="collabs-head"></thead>
-            <tbody id="collabs-body"></tbody>
-          </table>
+        <div id="collabs-err" class="inline-err card-alert" role="alert"></div>
+        <div class="card-content flush">
+          <div class="table-wrap">
+            <table id="collabs-table">
+              <thead id="collabs-head"></thead>
+              <tbody id="collabs-body"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
-      <footer class="keys muted">
-        <kbd>/</kbd> filter &middot; <kbd>j</kbd>/<kbd>k</kbd> next/previous row &middot; <kbd>enter</kbd> open &middot; <kbd>esc</kbd> close panel
+      <footer class="keys">
+        <kbd>/</kbd> filter <span class="dot" aria-hidden="true"></span> <kbd>j</kbd><kbd>k</kbd> next / previous row <span class="dot" aria-hidden="true"></span> <kbd>enter</kbd> open <span class="dot" aria-hidden="true"></span> <kbd>esc</kbd> close panel
       </footer>
     </main>
 
-    <aside id="detail" class="detail" aria-label="Details" hidden></aside>
+    <aside id="detail" class="detail card" aria-label="Details" hidden></aside>
   </div>
 
-  <dialog id="confirm" class="confirm" aria-labelledby="confirm-title">
+  <dialog id="confirm" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
     <form method="dialog">
-      <h3 id="confirm-title"></h3>
-      <div id="confirm-body"></div>
-      <div class="actions">
-        <button type="submit" value="cancel" id="confirm-cancel">Cancel</button>
-        <button type="submit" value="ok" id="confirm-ok" class="danger"></button>
+      <div class="dialog-header">
+        <h3 id="confirm-title" class="dialog-title"></h3>
+        <div id="confirm-body" class="dialog-desc"></div>
+      </div>
+      <div class="dialog-footer">
+        <button type="submit" value="cancel" id="confirm-cancel" class="btn outline">Cancel</button>
+        <button type="submit" value="ok" id="confirm-ok" class="btn destructive"></button>
       </div>
     </form>
   </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 </body>
 </html>

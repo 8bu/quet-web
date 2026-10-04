@@ -2,6 +2,7 @@
 // All DOM is built with createElement/textContent: no innerHTML, no inline styles (CSP).
 
 import type { Schema } from '../shared/schema';
+import { mountThemePicker } from './theme';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -75,6 +76,7 @@ interface Col<T> {
   key: string;
   label: string;
   num?: boolean;
+  time?: boolean;
   value: (row: T) => string | number;
 }
 
@@ -105,14 +107,14 @@ const PROJECT_COLS: Col<ProjectRow>[] = [
   { key: 'items', label: 'Items', num: true, value: (r) => r.items },
   { key: 'proposals', label: 'Proposals', num: true, value: (r) => r.proposals },
   { key: 'collaborators', label: 'Collabs', num: true, value: (r) => r.collaborators },
-  { key: 'updated_at', label: 'Updated', value: (r) => r.updated_at },
+  { key: 'updated_at', label: 'Updated', time: true, value: (r) => r.updated_at },
 ];
 
 const COLLAB_COLS: Col<CollabRow>[] = [
   { key: 'username', label: 'Username', value: (r) => r.username },
   { key: 'disabled', label: 'Status', value: (r) => (r.disabled ? 1 : 0) },
   { key: 'projects', label: 'Projects', value: (r) => r.projects.length },
-  { key: 'created_at', label: 'Created', value: (r) => r.created_at },
+  { key: 'created_at', label: 'Created', time: true, value: (r) => r.created_at },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -173,7 +175,7 @@ function fmtTime(ms: number | null | undefined): string {
 }
 
 function timeEl(ms: number | null | undefined): Node {
-  if (!ms || Number.isNaN(new Date(ms).getTime())) return h('span', { class: 'muted' }, '–');
+  if (!ms || Number.isNaN(new Date(ms).getTime())) return h('span', { class: 'muted' }, 'Never');
   return h('time', { datetime: new Date(ms).toISOString(), title: new Date(ms).toISOString() }, fmtTime(ms));
 }
 
@@ -182,8 +184,53 @@ function badge(text: string, cls = ''): HTMLElement {
 }
 
 function chips(values: string[]): Node {
-  if (values.length === 0) return h('span', { class: 'muted' }, '–');
+  if (values.length === 0) return h('span', { class: 'muted' }, 'None');
   return h('span', { class: 'chips' }, values.map((v) => h('span', { class: 'chip' }, v)));
+}
+
+/* ------------------------------------------------------------------ */
+/* Icons (Lucide, inline SVG)                                          */
+/* ------------------------------------------------------------------ */
+
+const ICON_PATHS = {
+  'arrow-up-down': '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  'chevron-up': '<path d="m18 15-6-6-6 6"/>',
+  'circle-alert': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+  'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
+  'circle-help': '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  'folder-open': '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+  'key-round': '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+  minus: '<path d="M5 12h14"/>',
+  'panel-right-open': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  'shield-alert': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+  'trash-2': '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  'user-check': '<path d="m16 11 2 2 4-4"/><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+  'user-minus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" x2="16" y1="11" y2="11"/>',
+  'user-x': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+} as const;
+type IconName = keyof typeof ICON_PATHS;
+const iconProtos = new Map<IconName, SVGSVGElement>();
+
+function icon(name: IconName, cls = 'ic'): SVGSVGElement {
+  let proto = iconProtos.get(name);
+  if (!proto) {
+    const doc = new DOMParser().parseFromString(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`,
+      'image/svg+xml',
+    );
+    proto = document.importNode(doc.documentElement, true) as unknown as SVGSVGElement;
+    iconProtos.set(name, proto);
+  }
+  const svg = proto.cloneNode(true) as SVGSVGElement;
+  svg.setAttribute('class', cls);
+  return svg;
 }
 
 /* ------------------------------------------------------------------ */
@@ -248,7 +295,7 @@ function describeItem(item: unknown): string {
     const rest = fields
       .filter(([k]) => k !== 'collaborator' && k !== 'id')
       .map(([k, v]) => (typeof v === 'string' ? v : `${k}: ${JSON.stringify(v)}`));
-    return [head.join(' / '), ...rest].filter(Boolean).join(' – ');
+    return [head.join(' / '), ...rest].filter(Boolean).join(', ');
   }
   return JSON.stringify(item);
 }
@@ -256,15 +303,14 @@ function describeItem(item: unknown): string {
 /** Render an error (message + any list members such as the 409 `invalid` list) into `slot`. */
 function showError(slot: HTMLElement, err: unknown): void {
   clear(slot);
-  slot.classList.remove('ok');
   slot.classList.add('has');
   const msg = err instanceof Error ? err.message : String(err);
-  slot.appendChild(h('span', { class: 'msg' }, msg));
+  const body = h('div', { class: 'alert-body' }, h('span', { class: 'msg' }, msg));
   if (err instanceof ApiError) {
     for (const [key, value] of Object.entries(err.body)) {
       if (!Array.isArray(value) || value.length === 0) continue;
       const label = key === 'invalid' ? `Invalid (${value.length}${value.length >= 50 ? '+' : ''})` : key;
-      slot.appendChild(
+      body.appendChild(
         h(
           'details',
           { class: 'err-list', open: true },
@@ -274,17 +320,21 @@ function showError(slot: HTMLElement, err: unknown): void {
       );
     }
   }
+  slot.append(icon('circle-alert', 'ic alert-ic'), body);
 }
 
-function showOk(slot: HTMLElement, msg: string): void {
-  clear(slot);
-  slot.classList.add('has', 'ok');
-  slot.appendChild(h('span', { class: 'msg' }, msg));
+/** Transient success notice (shadcn Sonner look), auto-dismissed. */
+function toast(msg: string): void {
+  const host = byId('toasts');
+  const node = h('div', { class: 'toast' }, icon('circle-check', 'ic toast-ic'), h('span', null, msg));
+  host.appendChild(node);
+  while (host.children.length > 4) host.firstElementChild?.remove();
+  window.setTimeout(() => node.remove(), 5000);
 }
 
 function clearMsg(slot: HTMLElement): void {
   clear(slot);
-  slot.classList.remove('has', 'ok');
+  slot.classList.remove('has');
 }
 
 function errSlot(): HTMLElement {
@@ -328,18 +378,20 @@ async function copyText(text: string): Promise<void> {
   if (!ok) throw new Error('Copy failed: select the text and copy it manually');
 }
 
-function copyButton(label: string, getText: () => string, slot: HTMLElement, fk?: string, extra = '', aria?: string): HTMLButtonElement {
-  const btn = h('button', { type: 'button', class: extra, 'data-fk': fk, 'aria-label': aria, title: aria }, label);
+function copyButton(label: string, getText: () => string, slot: HTMLElement, fk?: string, cls = 'btn outline sm', aria?: string): HTMLButtonElement {
+  const btn = h('button', { type: 'button', class: cls, 'data-fk': fk, 'aria-label': aria, title: aria });
+  const render = (done: boolean): void => {
+    btn.replaceChildren(icon(done ? 'check' : 'copy'), h('span', { class: 'lbl' }, done ? 'Copied' : label));
+  };
+  render(false);
   let timer = 0;
   btn.addEventListener('click', () => {
     void copyText(getText()).then(
       () => {
         clearMsg(slot);
-        btn.textContent = 'Copied ✓';
+        render(true);
         window.clearTimeout(timer);
-        timer = window.setTimeout(() => {
-          btn.textContent = label;
-        }, 1600);
+        timer = window.setTimeout(() => render(false), 1600);
       },
       (e: unknown) => showError(slot, e),
     );
@@ -351,13 +403,16 @@ function copyButton(label: string, getText: () => string, slot: HTMLElement, fk?
 /* Confirm dialog                                                      */
 /* ------------------------------------------------------------------ */
 
-function confirmDialog(title: string, body: Child, okLabel: string): Promise<boolean> {
+function confirmDialog(title: string, body: Child, okLabel: string, destructive = true): Promise<boolean> {
   const dlg = byId<HTMLDialogElement>('confirm');
   byId('confirm-title').textContent = title;
   const bodyEl = byId('confirm-body');
   clear(bodyEl);
   appendKids(bodyEl, [body]);
-  byId<HTMLButtonElement>('confirm-ok').textContent = okLabel;
+  const ok = byId<HTMLButtonElement>('confirm-ok');
+  ok.textContent = okLabel;
+  ok.classList.toggle('destructive', destructive);
+  ok.classList.toggle('primary', !destructive);
   dlg.returnValue = '';
   return new Promise((resolve) => {
     dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true });
@@ -438,14 +493,14 @@ function renderHead<T>(
           'th',
           {
             scope: 'col',
-            class: c.num ? 'num' : '',
+            class: `${c.num ? 'num' : ''} ${c.time ? 'col-time' : ''}`.trim(),
             'aria-sort': active ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none',
           },
           h(
             'button',
             { type: 'button', class: 'sort', 'data-fk': `sort:${tableId}:${c.key}`, click: () => onSort(c.key) },
             c.label,
-            active ? h('span', { class: 'arrow', 'aria-hidden': 'true' }, sort.dir === 1 ? '▲' : '▼') : null,
+            icon(active ? (sort.dir === 1 ? 'chevron-up' : 'chevron-down') : 'arrow-up-down', active ? 'ic sort-ic on' : 'ic sort-ic'),
           ),
         );
       }),
@@ -465,11 +520,25 @@ function actionBtn(
   fk: string,
   onClick: (btn: HTMLButtonElement) => void,
   aria: string,
-  cls = '',
+  cls = 'ghost',
+  ic?: IconName,
 ): HTMLButtonElement {
-  const btn = h('button', { type: 'button', class: `act ${cls}`.trim(), 'data-fk': fk, 'aria-label': aria }, label);
+  const btn = h(
+    'button',
+    { type: 'button', class: `btn sm ${cls}`.trim(), 'data-fk': fk, 'aria-label': aria, title: aria },
+    ic ? icon(ic) : null,
+    h('span', { class: 'lbl' }, label),
+  );
   btn.addEventListener('click', () => onClick(btn));
   return btn;
+}
+
+function emptyRow(span: number, ic: IconName, title: string, desc: string): HTMLElement {
+  return h(
+    'tr',
+    { class: 'empty' },
+    h('td', { colspan: span }, h('div', { class: 'empty-state' }, icon(ic, 'ic empty-ic'), h('p', { class: 'empty-title' }, title), h('p', { class: 'empty-desc' }, desc))),
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -496,16 +565,13 @@ function renderProjects(): void {
       : '';
     const keys = rows.map((r) => r.slug);
     if (rows.length === 0) {
+      const span = PROJECT_COLS.length + 1;
       body.appendChild(
-        h(
-          'tr',
-          { class: 'empty' },
-          h(
-            'td',
-            { colspan: PROJECT_COLS.length + 1 },
-            !listsLoaded ? 'Loading…' : projects.length === 0 ? 'No projects yet. Push one with quet web push.' : 'No projects match the filter.',
-          ),
-        ),
+        !listsLoaded
+          ? emptyRow(span, 'folder-open', 'Loading projects', '')
+          : projects.length === 0
+            ? emptyRow(span, 'folder-open', 'No projects yet', 'Push one from the Quet CLI with quet web push.')
+            : emptyRow(span, 'folder-open', 'No matching projects', 'Try a different filter.'),
       );
       return;
     }
@@ -523,21 +589,21 @@ function renderProjects(): void {
             'aria-current': open ? 'true' : null,
             class: open ? 'open' : '',
           },
-          h('td', { class: 'mono strong' }, p.slug),
-          h('td', null, p.name),
+          h('td', { class: 'mono strong nowrap' }, p.slug),
+          h('td', { class: 'name' }, p.name),
           h('td', { class: 'num' }, p.items),
           h('td', { class: 'num' }, p.proposals),
           h('td', { class: 'num' }, p.collaborators),
-          h('td', { class: 'nowrap' }, timeEl(p.updated_at)),
+          h('td', { class: 'nowrap muted col-time' }, timeEl(p.updated_at)),
           h(
             'td',
             { class: 'actions' },
             h(
               'div',
               { class: 'btns' },
-              actionBtn('Open', `p:${p.slug}:open`, () => void openDetail('p', p.slug, true), `Open project ${p.slug}`),
-              copyButton('Copy link', () => shareUrl(p.slug), slot, `p:${p.slug}:copy`, 'act', `Copy shareable link for ${p.slug}`),
-              actionBtn('Delete', `p:${p.slug}:delete`, (btn) => void deleteProject(p, slot, btn), `Delete project ${p.slug}`, 'danger'),
+              actionBtn('Open', `p:${p.slug}:open`, () => void openDetail('p', p.slug, true), `Open project ${p.slug}`, 'outline', 'panel-right-open'),
+              copyButton('Copy link', () => shareUrl(p.slug), slot, `p:${p.slug}:copy`, 'btn ghost sm', `Copy shareable link for ${p.slug}`),
+              actionBtn('Delete', `p:${p.slug}:delete`, (btn) => void deleteProject(p, slot, btn), `Delete project ${p.slug}`, 'ghost danger', 'trash-2'),
             ),
             slot,
           ),
@@ -554,7 +620,7 @@ async function deleteProject(p: ProjectRow, slot: HTMLElement, btn: HTMLButtonEl
       'div',
       null,
       h('p', null, `This permanently deletes ${p.items} item(s), ${p.proposals} proposal(s), all assignments and `, h('strong', null, 'every label by every collaborator'), ' in this project.'),
-      h('p', { class: 'muted' }, 'Pulled labels in Quet files are not affected. This cannot be undone.'),
+      h('p', null, 'Pulled labels in Quet files are not affected. This cannot be undone.'),
     ),
     'Delete project',
   );
@@ -563,6 +629,7 @@ async function deleteProject(p: ProjectRow, slot: HTMLElement, btn: HTMLButtonEl
     await api('DELETE', `/api/admin/projects/${enc(p.slug)}`);
     if (detail?.kind === 'p' && detail.key === p.slug) closeDetail(false);
     await reloadLists();
+    toast(`Deleted project ${p.slug}`);
   });
 }
 
@@ -571,7 +638,7 @@ async function deleteProject(p: ProjectRow, slot: HTMLElement, btn: HTMLButtonEl
 /* ------------------------------------------------------------------ */
 
 function projectLinks(slugs: string[]): Node {
-  if (slugs.length === 0) return h('span', { class: 'muted' }, '–');
+  if (slugs.length === 0) return h('span', { class: 'muted' }, 'None');
   return h(
     'span',
     { class: 'chips' },
@@ -601,16 +668,13 @@ function renderCollabs(): void {
       : '';
     const keys = rows.map((r) => r.username);
     if (rows.length === 0) {
+      const span = COLLAB_COLS.length + 1;
       body.appendChild(
-        h(
-          'tr',
-          { class: 'empty' },
-          h(
-            'td',
-            { colspan: COLLAB_COLS.length + 1 },
-            !listsLoaded ? 'Loading…' : collabs.length === 0 ? 'No collaborators yet. Create one above.' : 'No collaborators match the filter.',
-          ),
-        ),
+        !listsLoaded
+          ? emptyRow(span, 'users', 'Loading collaborators', '')
+          : collabs.length === 0
+            ? emptyRow(span, 'users', 'No collaborators yet', 'Create one with the form above.')
+            : emptyRow(span, 'users', 'No matching collaborators', 'Try a different filter.'),
       );
       return;
     }
@@ -628,25 +692,27 @@ function renderCollabs(): void {
             'aria-current': open ? 'true' : null,
             class: `${open ? 'open' : ''} ${c.disabled ? 'is-disabled' : ''}`.trim(),
           },
-          h('td', { class: 'mono strong' }, c.username),
-          h('td', null, c.disabled ? badge('disabled', 'warn') : h('span', { class: 'muted' }, 'active')),
+          h('td', { class: 'mono strong nowrap' }, c.username),
+          h('td', null, c.disabled ? badge('Disabled', 'destructive') : badge('Active', 'secondary')),
           h('td', null, projectLinks(c.projects)),
-          h('td', { class: 'nowrap' }, timeEl(c.created_at)),
+          h('td', { class: 'nowrap muted col-time' }, timeEl(c.created_at)),
           h(
             'td',
             { class: 'actions' },
             h(
               'div',
               { class: 'btns' },
-              actionBtn('Open', `c:${c.username}:open`, () => void openDetail('c', c.username, true), `Open collaborator ${c.username}`),
-              actionBtn('New password', `c:${c.username}:pw`, (btn) => void regeneratePassword(c.username, slot, btn), `Regenerate password for ${c.username}`),
+              actionBtn('Open', `c:${c.username}:open`, () => void openDetail('c', c.username, true), `Open collaborator ${c.username}`, 'outline', 'panel-right-open'),
+              actionBtn('New password', `c:${c.username}:pw`, (btn) => void regeneratePassword(c.username, slot, btn), `Regenerate password for ${c.username}`, 'ghost', 'key-round'),
               actionBtn(
                 c.disabled ? 'Enable' : 'Disable',
                 `c:${c.username}:toggle`,
                 (btn) => void setDisabled(c.username, !c.disabled, slot, btn),
                 `${c.disabled ? 'Enable' : 'Disable'} collaborator ${c.username}`,
+                'ghost',
+                c.disabled ? 'user-check' : 'user-x',
               ),
-              actionBtn('Delete', `c:${c.username}:delete`, (btn) => void deleteCollab(c, slot, btn), `Delete collaborator ${c.username}`, 'danger'),
+              actionBtn('Delete', `c:${c.username}:delete`, (btn) => void deleteCollab(c, slot, btn), `Delete collaborator ${c.username}`, 'ghost danger', 'trash-2'),
             ),
             slot,
           ),
@@ -661,6 +727,7 @@ async function regeneratePassword(username: string, slot: HTMLElement, btn: HTML
     `Regenerate password for “${username}”?`,
     h('p', null, 'A new random password replaces the current one and ', h('strong', null, 'signs the collaborator out everywhere'), '. The new password is shown once.'),
     'Regenerate',
+    false,
   );
   if (!ok) return;
   await run(slot, btn, async () => {
@@ -674,7 +741,7 @@ async function setPassword(username: string, password: string, slot: HTMLElement
   let done = false;
   await run(slot, btn, async () => {
     await api<SecretResponse>('PATCH', `/api/admin/collaborators/${enc(username)}`, { password });
-    showOk(slot, 'Password updated; existing sessions were signed out.');
+    toast(`Password updated for ${username}. Existing sessions were signed out.`);
     done = true;
   });
   return done;
@@ -684,6 +751,7 @@ async function setDisabled(username: string, disabled: boolean, slot: HTMLElemen
   await run(slot, btn, async () => {
     await api('PATCH', `/api/admin/collaborators/${enc(username)}`, { disabled });
     await afterMutation();
+    toast(`${disabled ? 'Disabled' : 'Enabled'} ${username}`);
   });
 }
 
@@ -694,7 +762,7 @@ async function deleteCollab(c: CollabRow, slot: HTMLElement, btn: HTMLButtonElem
       'div',
       null,
       h('p', null, h('strong', null, 'All labels by this collaborator are deleted with the account'), ', in every project', c.projects.length ? ` (${c.projects.join(', ')})` : '', '.'),
-      h('p', { class: 'muted' }, 'Pull their labels with quet web pull first if you still need them. To keep labels, disable the account or unassign it from the project instead.'),
+      h('p', null, 'Pull their labels with quet web pull first if you still need them. To keep labels, disable the account or unassign it from the project instead.'),
     ),
     'Delete collaborator',
   );
@@ -705,6 +773,7 @@ async function deleteCollab(c: CollabRow, slot: HTMLElement, btn: HTMLButtonElem
     const block = document.querySelector(`#secrets [data-user="${CSS.escape(c.username)}"]`);
     block?.remove();
     await afterMutation();
+    toast(`Deleted collaborator ${c.username}`);
   });
 }
 
@@ -713,6 +782,8 @@ async function deleteCollab(c: CollabRow, slot: HTMLElement, btn: HTMLButtonElem
 /* ------------------------------------------------------------------ */
 
 function showSecret(username: string, password: string, how: 'created' | 'regenerated'): void {
+  // In sheet mode the detail panel covers (and inerts) the page, so credentials would be hidden behind it.
+  if (detail && sheetMq.matches) closeDetail(false);
   const host = byId('secrets');
   for (const old of Array.from(host.children)) {
     if (old.getAttribute('data-user') === username) old.remove();
@@ -725,30 +796,36 @@ function showSecret(username: string, password: string, how: 'created' | 'regene
     h(
       'div',
       { class: 'secret-head' },
-      h('strong', null, how === 'created' ? `Collaborator “${username}” created` : `New password for “${username}”`),
-    ),
-    h(
-      'p',
-      { class: 'warning', role: 'note' },
-      h('strong', null, 'Shown once. '),
-      'This password cannot be retrieved later. Copy it now and send it over a private channel. If it is lost, regenerate it.',
+      icon('key-round', 'ic secret-ic'),
+      h(
+        'div',
+        null,
+        h('h3', { class: 'secret-title' }, how === 'created' ? `Collaborator “${username}” created` : `New password for “${username}”`),
+        h(
+          'p',
+          { class: 'warning', role: 'note' },
+          h('strong', null, 'Shown once. '),
+          'This password cannot be retrieved later. Copy it now and send it over a private channel. If it is lost, regenerate it.',
+        ),
+      ),
     ),
     h('pre', { class: 'secret-block', tabindex: 0, 'aria-label': 'Credentials' }, text),
     h(
       'div',
       { class: 'btns' },
-      copyButton('Copy credentials', () => text, slot, undefined, 'primary'),
-      copyButton('Copy password', () => password, slot),
+      copyButton('Copy credentials', () => text, slot, undefined, 'btn primary sm'),
+      copyButton('Copy password', () => password, slot, undefined, 'btn outline sm'),
       h(
         'button',
         {
           type: 'button',
+          class: 'btn ghost sm',
           click: () => {
             block.remove();
             byId<HTMLInputElement>('nc-username').focus();
           },
         },
-        'Done – I saved it',
+        'Done, I saved it',
       ),
     ),
     slot,
@@ -772,7 +849,7 @@ function initNewCollab(): void {
     ev.preventDefault();
     const username = user.value.trim();
     if (!USERNAME_RE.test(username)) {
-      showError(slot, new Error('Invalid username: use 2–32 characters of a–z, 0–9, “.”, “_”, “-”, starting with a letter or digit.'));
+      showError(slot, new Error('Invalid username: use 2 to 32 characters of a-z, 0-9, “.”, “_”, “-”, starting with a letter or digit.'));
       user.focus();
       return;
     }
@@ -783,7 +860,7 @@ function initNewCollab(): void {
       form.reset();
       clearMsg(slot);
       if (res.password) showSecret(res.username || username, res.password, 'created');
-      else showOk(slot, `Collaborator “${res.username || username}” created.`);
+      else toast(`Collaborator “${res.username || username}” created.`);
       await afterMutation();
     });
   });
@@ -844,10 +921,38 @@ function closeDetail(refocus: boolean): void {
   }
 }
 
+const sheetMq = window.matchMedia('(max-width: 1100px)');
+
+/** On narrow screens the detail panel is a full-height sheet: make the page behind it inert. */
+function syncSheet(): void {
+  const sheet = detail !== null && sheetMq.matches;
+  byId('topbar').inert = sheet;
+  byId('main').inert = sheet;
+}
+
+function renderCrumbs(): void {
+  const list = byId('crumbs');
+  clear(list);
+  const sep = (): HTMLElement => h('li', { class: 'sep', 'aria-hidden': 'true' }, icon('chevron-right'));
+  if (!detail) {
+    list.appendChild(h('li', null, h('span', { 'aria-current': 'page' }, 'Admin')));
+    return;
+  }
+  list.append(
+    h('li', null, h('button', { type: 'button', class: 'crumb-link', click: () => closeDetail(true) }, 'Admin')),
+    sep(),
+    h('li', null, detail.kind === 'p' ? 'Projects' : 'Collaborators'),
+    sep(),
+    h('li', { class: 'crumb-current' }, h('span', { class: 'mono', 'aria-current': 'page' }, detail.key)),
+  );
+}
+
 function renderDetail(focusHeading: boolean): void {
   const panel = byId('detail');
   const app = byId('app');
   const scroll = panel.scrollTop;
+  renderCrumbs();
+  syncSheet();
   if (!detail) {
     panel.hidden = true;
     app.classList.remove('with-detail');
@@ -863,7 +968,9 @@ function renderDetail(focusHeading: boolean): void {
     panel.appendChild(detail.kind === 'p' ? projectPanel(detail) : collabPanel(detail));
   });
   panel.scrollTop = scroll;
-  if (focusHeading || (hadFocus && !panel.contains(document.activeElement))) panel.querySelector<HTMLElement>('h2')?.focus();
+  const lostFocus = hadFocus && !panel.contains(document.activeElement);
+  const sheetNeedsFocus = sheetMq.matches && document.activeElement === document.body;
+  if (focusHeading || lostFocus || sheetNeedsFocus) panel.querySelector<HTMLElement>('h2')?.focus();
 }
 
 function panelHead(title: string, sub: Child, extra: Child): HTMLElement {
@@ -874,13 +981,13 @@ function panelHead(title: string, sub: Child, extra: Child): HTMLElement {
       'div',
       { class: 'panel-title' },
       h('h2', { tabindex: -1 }, title),
-      sub ? h('div', { class: 'muted' }, sub) : null,
+      sub ? h('div', { class: 'panel-sub' }, sub) : null,
     ),
     h(
       'div',
       { class: 'btns' },
       extra,
-      h('button', { type: 'button', 'data-fk': 'detail:close', 'aria-label': 'Close panel (Esc)', title: 'Close (Esc)', click: () => closeDetail(true) }, 'Close ✕'),
+      h('button', { type: 'button', class: 'btn ghost icon', 'data-fk': 'detail:close', 'aria-label': 'Close panel (Esc)', title: 'Close (Esc)', click: () => closeDetail(true) }, icon('x')),
     ),
   );
 }
@@ -902,7 +1009,7 @@ function projectPanel(d: DetailState): HTMLElement {
       d.key,
       info ? info.name : null,
       [
-        copyButton('Copy link', () => url, slot, 'detail:copy', '', `Copy shareable link for ${d.key}`),
+        copyButton('Copy link', () => url, slot, 'detail:copy', 'btn outline sm', `Copy shareable link for ${d.key}`),
         info
           ? actionBtn(
               'Delete',
@@ -916,22 +1023,23 @@ function projectPanel(d: DetailState): HTMLElement {
                 );
               },
               `Delete project ${d.key}`,
-              'danger',
+              'outline danger',
+              'trash-2',
             )
           : null,
       ],
     ),
   );
-  root.appendChild(slot);
+  root.appendChild(h('div', { class: 'panel-msg' }, slot));
 
   if (d.loading) {
-    root.appendChild(h('p', { class: 'muted' }, 'Loading…'));
+    root.appendChild(h('p', { class: 'empty-inline' }, 'Loading…'));
     return root;
   }
   if (d.error || !d.data || !info) {
     const errBox = errSlot();
     showError(errBox, d.error ?? new Error('No data'));
-    root.appendChild(errBox);
+    root.appendChild(h('div', { class: 'panel-msg' }, errBox));
     return root;
   }
 
@@ -991,22 +1099,23 @@ function collaboratorsBlock(slug: string, info: ProjectInfo, rows: Progress[]): 
 
   const select = h(
     'select',
-    { id: 'assign-select', 'aria-label': 'Collaborator to assign', disabled: candidates.length === 0 },
+    { id: 'assign-select', class: 'select', 'aria-label': 'Collaborator to assign', disabled: candidates.length === 0 },
     candidates.length === 0 ? h('option', { value: '' }, 'no unassigned collaborators') : candidates.map((u) => h('option', { value: u }, u)),
   );
-  const assignBtn = h('button', { type: 'button', class: 'primary', disabled: candidates.length === 0, 'data-fk': 'detail:assign' }, 'Assign');
+  const assignBtn = h('button', { type: 'button', class: 'btn primary', disabled: candidates.length === 0, 'data-fk': 'detail:assign' }, icon('plus'), 'Assign');
   assignBtn.addEventListener('click', () => {
     const username = select.value;
     if (!username) return;
     void run(slot, assignBtn, async () => {
       await api('PUT', `/api/admin/projects/${enc(slug)}/collaborators/${enc(username)}`);
       await afterMutation();
+      toast(`Assigned ${username} to ${slug}`);
     });
   });
 
   const table =
     rows.length === 0
-      ? h('p', { class: 'muted' }, 'No collaborators assigned. Assign someone to let them label this project.')
+      ? h('p', { class: 'empty-inline' }, 'No collaborators assigned. Assign someone to let them label this project.')
       : h(
           'div',
           { class: 'table-wrap' },
@@ -1021,11 +1130,10 @@ function collaboratorsBlock(slug: string, info: ProjectInfo, rows: Progress[]): 
                 null,
                 h('th', { scope: 'col' }, 'Collaborator'),
                 h('th', { scope: 'col' }, 'Progress'),
-                h('th', { scope: 'col', class: 'num', title: 'complete' }, '✓'),
-                h('th', { scope: 'col', class: 'num', title: 'uncertain' }, '?'),
-                h('th', { scope: 'col', class: 'num', title: 'skipped' }, '–'),
-                h('th', { scope: 'col' }, 'Last label'),
-                h('th', { scope: 'col' }, ''),
+                h('th', { scope: 'col', class: 'num', title: 'complete' }, icon('check'), h('span', { class: 'sr-only' }, 'Complete')),
+                h('th', { scope: 'col', class: 'num', title: 'uncertain' }, icon('circle-help'), h('span', { class: 'sr-only' }, 'Uncertain')),
+                h('th', { scope: 'col', class: 'num', title: 'skipped' }, icon('minus'), h('span', { class: 'sr-only' }, 'Skipped')),
+                h('th', { scope: 'col' }, h('span', { class: 'sr-only' }, 'Actions')),
               ),
             ),
             h(
@@ -1041,8 +1149,8 @@ function collaboratorsBlock(slug: string, info: ProjectInfo, rows: Progress[]): 
                     'td',
                     null,
                     h('button', { type: 'button', class: 'linkbtn mono', 'data-fk': `detail:u:${r.username}`, title: `Open collaborator ${r.username}`, click: () => void openDetail('c', r.username, true) }, r.username),
-                    ' ',
-                    r.disabled ? badge('disabled', 'warn') : null,
+                    r.disabled ? [' ', badge('Disabled', 'destructive')] : null,
+                    h('div', { class: 'sub' }, 'Last label: ', timeEl(r.last_label_at)),
                   ),
                   h(
                     'td',
@@ -1054,7 +1162,6 @@ function collaboratorsBlock(slug: string, info: ProjectInfo, rows: Progress[]): 
                   h('td', { class: 'num mono' }, r.complete),
                   h('td', { class: 'num mono' }, r.uncertain),
                   h('td', { class: 'num mono' }, r.skipped),
-                  h('td', { class: 'nowrap' }, timeEl(r.last_label_at)),
                   h(
                     'td',
                     { class: 'actions' },
@@ -1065,8 +1172,11 @@ function collaboratorsBlock(slug: string, info: ProjectInfo, rows: Progress[]): 
                         void run(rowSlot, btn, async () => {
                           await api('DELETE', `/api/admin/projects/${enc(slug)}/collaborators/${enc(r.username)}`);
                           await afterMutation();
+                          toast(`Unassigned ${r.username} from ${slug}`);
                         }),
                       `Unassign ${r.username} from ${slug} (labels are kept)`,
+                      'ghost',
+                      'user-minus',
                     ),
                     rowSlot,
                   ),
@@ -1081,9 +1191,9 @@ function collaboratorsBlock(slug: string, info: ProjectInfo, rows: Progress[]): 
     { class: 'block' },
     h('h3', null, `Collaborators (${rows.length})`),
     table,
-    h('div', { class: 'assign' }, h('label', { for: 'assign-select' }, 'Assign'), select, assignBtn),
+    h('div', { class: 'assign' }, h('label', { for: 'assign-select' }, 'Assign a collaborator'), select, assignBtn),
     slot,
-    h('p', { class: 'hint muted' }, 'Unassigning hides the project from the collaborator but keeps their labels.'),
+    h('p', { class: 'hint' }, 'Unassigning hides the project from the collaborator but keeps their labels.'),
   );
 }
 
@@ -1106,7 +1216,7 @@ function schemaBlock(info: ProjectInfo): HTMLElement {
     block.appendChild(
       s.types.length === 0
         ? h('p', { class: 'muted' }, 'None.')
-        : miniTable(['Key', 'Name', 'Description'], s.types.map((t, i) => [i < 9 ? String(i + 1) : '', h('span', { class: 'mono strong' }, t.name), t.description || h('span', { class: 'muted' }, '–')])),
+        : miniTable(['Key', 'Name', 'Description'], s.types.map((t, i) => [i < 9 ? h('kbd', null, String(i + 1)) : '', h('span', { class: 'mono strong' }, t.name), t.description || h('span', { class: 'muted' }, 'None')])),
     );
 
     block.appendChild(h('h4', null, `Statuses (${s.statuses.length})`));
@@ -1117,8 +1227,8 @@ function schemaBlock(info: ProjectInfo): HTMLElement {
             ['Name', 'Description', ''],
             s.statuses.map((t) => [
               h('span', { class: 'mono strong' }, t.name),
-              t.description || h('span', { class: 'muted' }, '–'),
-              nullStatuses.has(t.name) ? badge('null label', 'info') : '',
+              t.description || h('span', { class: 'muted' }, 'None'),
+              nullStatuses.has(t.name) ? badge('null label', 'outline') : '',
             ]),
           ),
     );
@@ -1129,7 +1239,7 @@ function schemaBlock(info: ProjectInfo): HTMLElement {
         ? h('p', { class: 'muted' }, 'None.')
         : miniTable(
             ['Name', 'Description', 'Null for types', 'Statuses'],
-            s.spans.map((sp) => [h('span', { class: 'mono strong' }, sp.name), sp.description || h('span', { class: 'muted' }, '–'), chips(sp.null_for_types), chips(sp.statuses)]),
+            s.spans.map((sp) => [h('span', { class: 'mono strong' }, sp.name), sp.description || h('span', { class: 'muted' }, 'None'), chips(sp.null_for_types), chips(sp.statuses)]),
           ),
     );
   } catch (e) {
@@ -1166,18 +1276,18 @@ function collabPanel(d: DetailState): HTMLElement {
     root.appendChild(panelHead(d.key, null, null));
     const e = errSlot();
     showError(e, new Error(listsLoaded ? 'This collaborator no longer exists.' : 'Loading…'));
-    root.appendChild(e);
+    root.appendChild(h('div', { class: 'panel-msg' }, e));
     return root;
   }
 
   root.appendChild(
-    panelHead(c.username, c.disabled ? badge('disabled', 'warn') : 'active', [
-      actionBtn('New password', 'detail:pw', (btn) => void regeneratePassword(c.username, slot, btn), `Regenerate password for ${c.username}`),
-      actionBtn(c.disabled ? 'Enable' : 'Disable', 'detail:toggle', (btn) => void setDisabled(c.username, !c.disabled, slot, btn), `${c.disabled ? 'Enable' : 'Disable'} collaborator ${c.username}`),
-      actionBtn('Delete', 'detail:delete', (btn) => void deleteCollab(c, slot, btn), `Delete collaborator ${c.username}`, 'danger'),
+    panelHead(c.username, c.disabled ? badge('Disabled', 'destructive') : badge('Active', 'secondary'), [
+      actionBtn('New password', 'detail:pw', (btn) => void regeneratePassword(c.username, slot, btn), `Regenerate password for ${c.username}`, 'outline', 'key-round'),
+      actionBtn(c.disabled ? 'Enable' : 'Disable', 'detail:toggle', (btn) => void setDisabled(c.username, !c.disabled, slot, btn), `${c.disabled ? 'Enable' : 'Disable'} collaborator ${c.username}`, 'outline', c.disabled ? 'user-check' : 'user-x'),
+      actionBtn('Delete', 'detail:delete', (btn) => void deleteCollab(c, slot, btn), `Delete collaborator ${c.username}`, 'outline danger', 'trash-2'),
     ]),
   );
-  root.appendChild(slot);
+  root.appendChild(h('div', { class: 'panel-msg' }, slot));
   root.appendChild(h('dl', { class: 'kv' }, kv('Created', timeEl(c.created_at)), kv('Login', h('code', { class: 'mono' }, `${PUBLIC_ORIGIN}/`))));
 
   // Assignments
@@ -1185,16 +1295,17 @@ function collabPanel(d: DetailState): HTMLElement {
   const available = projects.filter((p) => !c.projects.includes(p.slug)).map((p) => p.slug).sort();
   const select = h(
     'select',
-    { id: 'assign-project', 'aria-label': 'Project to assign', disabled: available.length === 0 },
+    { id: 'assign-project', class: 'select', 'aria-label': 'Project to assign', disabled: available.length === 0 },
     available.length === 0 ? h('option', { value: '' }, 'no unassigned projects') : available.map((s) => h('option', { value: s }, s)),
   );
-  const assignBtn = h('button', { type: 'button', class: 'primary', disabled: available.length === 0, 'data-fk': 'detail:assign' }, 'Assign');
+  const assignBtn = h('button', { type: 'button', class: 'btn primary', disabled: available.length === 0, 'data-fk': 'detail:assign' }, icon('plus'), 'Assign');
   assignBtn.addEventListener('click', () => {
     const slug = select.value;
     if (!slug) return;
     void run(aslot, assignBtn, async () => {
       await api('PUT', `/api/admin/projects/${enc(slug)}/collaborators/${enc(c.username)}`);
       await afterMutation();
+      toast(`Assigned ${c.username} to ${slug}`);
     });
   });
   root.appendChild(
@@ -1203,7 +1314,7 @@ function collabPanel(d: DetailState): HTMLElement {
       { class: 'block' },
       h('h3', null, `Assigned projects (${c.projects.length})`),
       c.projects.length === 0
-        ? h('p', { class: 'muted' }, 'Not assigned to any project.')
+        ? h('p', { class: 'empty-inline' }, 'Not assigned to any project.')
         : h(
             'ul',
             { class: 'plain' },
@@ -1220,22 +1331,24 @@ function collabPanel(d: DetailState): HTMLElement {
                     void run(rowSlot, btn, async () => {
                       await api('DELETE', `/api/admin/projects/${enc(slug)}/collaborators/${enc(c.username)}`);
                       await afterMutation();
+                      toast(`Unassigned ${c.username} from ${slug}`);
                     }),
                   `Unassign ${c.username} from ${slug} (labels are kept)`,
+                  'ghost',
                 ),
                 rowSlot,
               );
             }),
           ),
-      h('div', { class: 'assign' }, h('label', { for: 'assign-project' }, 'Assign to'), select, assignBtn),
+      h('div', { class: 'assign' }, h('label', { for: 'assign-project' }, 'Assign to a project'), select, assignBtn),
       aslot,
     ),
   );
 
   // Set password
   const pslot = errSlot();
-  const pw = h('input', { id: 'set-password', type: 'password', autocomplete: 'new-password', placeholder: 'new password' });
-  const pwBtn = h('button', { type: 'submit' }, 'Set password');
+  const pw = h('input', { id: 'set-password', class: 'input', type: 'password', autocomplete: 'new-password', placeholder: 'new password' });
+  const pwBtn = h('button', { type: 'submit', class: 'btn outline' }, icon('key-round'), 'Set password');
   const pwForm = h('form', { class: 'assign', novalidate: true }, h('label', { for: 'set-password' }, 'Set password'), pw, pwBtn);
   pwForm.addEventListener('submit', (ev) => {
     ev.preventDefault();
@@ -1248,7 +1361,7 @@ function collabPanel(d: DetailState): HTMLElement {
       if (ok) pw.value = '';
     });
   });
-  root.appendChild(h('section', { class: 'block' }, h('h3', null, 'Password'), pwForm, pslot, h('p', { class: 'hint muted' }, 'Changing a password signs the collaborator out everywhere.')));
+  root.appendChild(h('section', { class: 'block' }, h('h3', null, 'Password'), pwForm, pslot, h('p', { class: 'hint' }, 'Changing a password signs the collaborator out everywhere.')));
   return root;
 }
 
@@ -1435,9 +1548,10 @@ function showGate(err: unknown): void {
   byId('app').hidden = true;
   const status = err instanceof ApiError ? err.status : 0;
   const msg = err instanceof Error ? err.message : String(err);
+  const body = h('div', { class: 'alert-body' });
   if (status === 401 || status === 403) {
-    gate.appendChild(h('h2', null, 'Access denied'));
-    gate.appendChild(
+    body.appendChild(h('h2', null, 'Access denied'));
+    body.appendChild(
       h(
         'p',
         null,
@@ -1446,8 +1560,8 @@ function showGate(err: unknown): void {
         '). The admin dashboard is protected by Cloudflare Access and only opens for the configured admin identity.',
       ),
     );
-    gate.appendChild(h('p', { class: 'server-msg' }, `Server said: ${msg}`));
-    gate.appendChild(
+    body.appendChild(h('p', { class: 'server-msg' }, `Server said: ${msg}`));
+    body.appendChild(
       h(
         'ul',
         null,
@@ -1457,10 +1571,11 @@ function showGate(err: unknown): void {
       ),
     );
   } else {
-    gate.appendChild(h('h2', null, 'Cannot reach the admin API'));
-    gate.appendChild(h('p', { class: 'server-msg' }, msg));
+    body.appendChild(h('h2', null, 'Cannot reach the admin API'));
+    body.appendChild(h('p', { class: 'server-msg' }, msg));
   }
-  gate.appendChild(h('button', { type: 'button', click: () => void boot() }, 'Retry'));
+  body.appendChild(h('button', { type: 'button', class: 'btn outline sm', click: () => void boot() }, 'Retry'));
+  gate.append(icon('shield-alert', 'ic alert-ic'), body);
 }
 
 async function boot(): Promise<void> {
@@ -1487,6 +1602,16 @@ async function boot(): Promise<void> {
   }
 }
 
+function initChrome(): void {
+  mountThemePicker(byId('theme-picker'));
+  sheetMq.addEventListener('change', syncSheet);
+  // On narrow screens the dark overlay behind the sheet is the layout's ::before; a click on it closes the panel.
+  byId('app').addEventListener('click', (ev) => {
+    if (ev.target === ev.currentTarget && sheetMq.matches && detail) closeDetail(true);
+  });
+}
+
+initChrome();
 initKeyboard();
 initNewCollab();
 void boot();

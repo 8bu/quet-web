@@ -6,42 +6,69 @@
   <meta name="color-scheme" content="light dark">
   <title>quet</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+  <script src="/theme-init.js"></script>
+  <link rel="stylesheet" href="/tokens.css">
   <link rel="stylesheet" href="/app.css">
 </head>
 <body class="home">
-  <main id="app">
-    <header class="bar">
-      <h1 class="brand">quet</h1>
-      <div class="bar-end">
-        <span id="who" class="who" hidden></span>
-        <button id="signout" type="button" class="btn" hidden>sign out</button>
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="crumb-wrap">
+        <h1 class="brand">Quet</h1>
+        <nav id="crumbs" class="crumbs" aria-label="Breadcrumb" hidden>
+          <ol><li><span id="crumb" aria-current="page"></span></li></ol>
+        </nav>
       </div>
-    </header>
+      <div class="top-end">
+        <span id="who" class="who" hidden></span>
+        <button id="signout" type="button" class="btn outline sm" hidden>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+          <span class="lbl">Sign out</span>
+        </button>
+        <div id="theme-picker"></div>
+      </div>
+    </div>
+  </header>
 
-    <p id="status" class="note" role="status">loading…</p>
-    <noscript><p class="note err">quet needs JavaScript.</p></noscript>
+  <main id="app">
+    <div id="status" class="status" role="status">Loading…</div>
+    <noscript><p class="note err">Quet needs JavaScript.</p></noscript>
 
-    <section id="login-panel" hidden aria-labelledby="login-title">
-      <h2 id="login-title" class="title">Sign in</h2>
-      <form id="login-form" class="form" autocomplete="on">
-        <label for="username">username</label>
-        <input id="username" name="username" type="text" autocomplete="username"
-               autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>
-        <label for="password">password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <p id="login-error" class="note err" role="alert" hidden></p>
-        <div class="form-row">
-          <button id="login-submit" type="submit" class="btn primary">sign in</button>
-          <span class="hint"><kbd>enter</kbd> submits</span>
+    <section id="login-panel" class="card login" hidden aria-labelledby="login-title">
+      <div class="card-header">
+        <h2 id="login-title" class="card-title">Sign in</h2>
+        <p class="card-desc">Use the username and password you were given to label your projects.</p>
+      </div>
+      <form id="login-form" class="card-content form" autocomplete="on">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" class="input" name="username" type="text" autocomplete="username"
+                 autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>
         </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" class="input" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <div id="login-error" class="alert" role="alert" hidden></div>
+        <button id="login-submit" type="submit" class="btn primary">Sign in</button>
+        <p class="hint"><kbd>enter</kbd> submits</p>
       </form>
     </section>
 
     <section id="projects-panel" hidden aria-labelledby="projects-title">
-      <h2 id="projects-title" class="title">Projects</h2>
+      <div class="section-head">
+        <div>
+          <h2 id="projects-title" class="section-title">Projects <span id="projects-count" class="badge secondary count"></span></h2>
+          <p class="section-desc">Pick a project to start labelling.</p>
+        </div>
+      </div>
       <ul id="projects" class="projects"></ul>
-      <p id="projects-empty" class="note" hidden>No projects are assigned to you yet.</p>
-      <p class="hint keys"><kbd>j</kbd>/<kbd>k</kbd> move &nbsp; <kbd>enter</kbd> open</p>
+      <div id="projects-empty" class="card empty" hidden>
+        <svg class="ic empty-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+        <p class="empty-title">No projects are assigned to you yet.</p>
+        <p class="empty-desc">Ask the admin to assign you a project, then reload this page.</p>
+      </div>
+      <p class="hint keys"><kbd>j</kbd><kbd>k</kbd> move <span class="dot" aria-hidden="true"></span> <kbd>enter</kbd> open</p>
     </section>
   </main>
   <script type="module" src="/js/index.js"></script>
