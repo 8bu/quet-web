@@ -3,6 +3,7 @@
 
 import type { Label, Schema, Span, SpanField } from '../shared/schema';
 import { SchemaError, cpSlice, isNullFor, normalizeLabel, parseSchema } from '../shared/schema';
+import { mountThemePicker } from './theme';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,6 +115,8 @@ const $ = {
   bDisc: el<HTMLButtonElement>('bDisc'),
   bUnsure: el<HTMLButtonElement>('bUnsure'),
 };
+
+mountThemePicker(el('themePicker'));
 
 // ---------------------------------------------------------------------------
 // Network
@@ -396,7 +399,7 @@ function renderHeader(): void {
     $.segs.appendChild(bar);
   }
   bar.style.width = `${total > 0 ? ((labelled / total) * 100).toFixed(2) : 0}%`;
-  setHTML($.count, 'count', `Note ${idx + 1} of ${total}<small>${labelled} saved</small>`);
+  setHTML($.count, 'count', `<span class="cl">Note </span>${idx + 1} of ${total}<small>${labelled} saved</small>`);
 }
 
 function slotHTML(k: number, d: Draft): string {

@@ -1,41 +1,6 @@
 /* Quet labeller (port of prototypes/v2-a-label-studio.html). Mimics shadcn/ui (new-york, neutral base, v4 tokens) in plain CSS:
    the labeller ships as vanilla TS, so components are re-created by anatomy, not imported.
    Target/Value use shadcn chart-1 (orange) and chart-2 (teal); everything else is neutral. */
-@font-face{font-family:"Geist";src:url(/fonts/Geist-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
-@font-face{font-family:"Geist Mono";src:url(/fonts/GeistMono-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
-:root{
-  color-scheme:light;
-  --radius:.625rem;
-  --background:oklch(1 0 0); --foreground:oklch(.145 0 0);
-  --card:oklch(1 0 0); --card-foreground:oklch(.145 0 0);
-  --popover:oklch(1 0 0);
-  --primary:oklch(.205 0 0); --primary-foreground:oklch(.985 0 0);
-  --secondary:oklch(.97 0 0); --muted:oklch(.97 0 0); --muted-foreground:oklch(.556 0 0);
-  --accent:oklch(.97 0 0); --accent-foreground:oklch(.205 0 0);
-  --destructive:oklch(.577 .245 27.325);
-  --border:oklch(.922 0 0); --input:oklch(.922 0 0); --ring:oklch(.708 0 0);
-  --chart-1:oklch(.646 .222 41.116); --chart-2:oklch(.6 .118 184.704);
-  --s0:var(--chart-1); --s1:var(--chart-2); --s2:oklch(.55 .17 255); --s3:oklch(.58 .2 305); --s4:oklch(.6 .21 5);
-  --s0-ink:oklch(.47 .16 41); --s1-ink:oklch(.43 .09 185); --s2-ink:oklch(.43 .15 255); --s3-ink:oklch(.42 .16 305); --s4-ink:oklch(.46 .17 5);
-  --shadow-xs:0 1px 2px 0 rgb(0 0 0 / .05);
-  --shadow-sm:0 1px 3px 0 rgb(0 0 0 / .1),0 1px 2px -1px rgb(0 0 0 / .1);
-  --shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1),0 4px 6px -4px rgb(0 0 0 / .1);
-  --r-sm:calc(var(--radius) - 4px); --r-md:calc(var(--radius) - 2px); --r-lg:var(--radius); --r-xl:calc(var(--radius) + 4px);
-  --active:var(--s0);
-  --sans:"Geist",ui-sans-serif,system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace;
-}
-@media (prefers-color-scheme:dark){:root{
-  color-scheme:dark;
-  --background:oklch(.145 0 0); --foreground:oklch(.985 0 0);
-  --card:oklch(.205 0 0); --card-foreground:oklch(.985 0 0); --popover:oklch(.205 0 0);
-  --primary:oklch(.922 0 0); --primary-foreground:oklch(.205 0 0);
-  --secondary:oklch(.269 0 0); --muted:oklch(.269 0 0); --muted-foreground:oklch(.708 0 0);
-  --accent:oklch(.269 0 0); --accent-foreground:oklch(.985 0 0);
-  --destructive:oklch(.704 .191 22.216);
-  --border:oklch(1 0 0 / 10%); --input:oklch(1 0 0 / 15%); --ring:oklch(.556 0 0);
-  --chart-1:oklch(.705 .19 45); --chart-2:oklch(.696 .17 162.48); --s2:oklch(.7 .15 255); --s3:oklch(.7 .17 305); --s4:oklch(.72 .17 5);
-  --s0-ink:oklch(.82 .12 50); --s1-ink:oklch(.84 .11 165); --s2-ink:oklch(.82 .1 255); --s3-ink:oklch(.84 .1 305); --s4-ink:oklch(.84 .1 5);
-}}
 *{box-sizing:border-box;border-color:var(--border)}
 html,body{height:100%;margin:0}
 body{background:var(--background);color:var(--foreground);font:14px/1.5 var(--sans);
@@ -69,8 +34,9 @@ header{flex:none;height:56px;display:flex;align-items:center;gap:16px;padding:0 
 .qbtn:hover{background:var(--accent)}
 .qbtn[aria-expanded=true]{background:var(--accent)}
 #helpClose{width:auto;padding:0 12px}
+#themePicker{flex:none}
 
-main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 24px 16px;display:flex;flex-direction:column;gap:16px}
+main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 24px 16px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;overscroll-behavior:contain}
 
 /* span slots: small Cards */
 .strip{flex:none;display:flex;flex-direction:column;gap:12px}
@@ -122,7 +88,7 @@ main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 
 .nx:hover{background:var(--accent)}
 
 /* note Card */
-.card{flex:1;min-height:150px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);
+.card{flex:1 0 auto;min-height:150px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);
   display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px 32px 20px;position:relative}
 .card.a0{--active:var(--s0)}.card.a1{--active:var(--s1)}.card.a2{--active:var(--s2)}.card.a3{--active:var(--s3)}.card.a4{--active:var(--s4)}.card.a-none{--active:var(--ring)}
 .note{font-size:clamp(34px,6.6vh,60px);line-height:1.45;font-weight:500;letter-spacing:-.03em;user-select:none;-webkit-user-select:none;touch-action:none;overflow-wrap:anywhere}
@@ -215,16 +181,20 @@ footer{flex:none;position:relative;border-top:1px solid var(--border);background
 @media (max-width:640px){
   header{height:52px;padding:0 12px;gap:10px}
   .brand span{display:none}
-  .segs{width:96px}
+  .segs{width:auto;flex:1 1 32px;max-width:96px}
   .count small{display:none}
-  .qbtn{height:44px;width:44px}
-  main{padding:10px 12px;gap:10px}
+  .qbtn{height:40px;width:40px}
+  header{gap:8px}
+  .theme-picker button{width:28px;height:28px}
+  main{padding:10px 12px;gap:8px}
   .slots{grid-template-columns:minmax(0,1fr);gap:8px}
   .slot{flex-wrap:wrap}
   .slot-main{padding:8px 8px 8px 14px;min-height:48px}
   .sv{font-size:18px}
   .slot.active .acts{flex:1 0 100%;justify-content:flex-end;padding:0 8px 8px}
   .slot.active .slot-main{padding-bottom:0}
+  .slot.active .acts:not(:has(.stat)){flex:none;padding:0 8px 0 0}
+  .slot.active:has(.acts:not(:has(.stat))) .slot-main{padding-bottom:8px}
   .slot:not(.active) .acts .mini:not(.x){display:none}
   .mini{height:44px;font-size:14px}
   .mini.x{width:44px}
@@ -236,9 +206,10 @@ footer{flex:none;position:relative;border-top:1px solid var(--border);background
   .card{min-height:0;padding:12px 16px}
   .note{font-size:clamp(25px,7.2vw,30px);line-height:1.5}
   .hintrow{font-size:13px}
-  .types{gap:6px}
-  .type{min-height:56px;padding:8px 10px}
-  .type .tg{font-size:12px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .types{grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px;max-height:none;overflow:visible}
+  .type{min-height:40px;padding:0 6px;align-items:center}
+  .type .tn{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .type .tg{display:none}
   footer{padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
   .bar{flex-direction:column;align-items:stretch;gap:8px}
   .br .btn{flex:1;padding:0 6px;height:44px;min-width:0}
@@ -250,6 +221,7 @@ footer{flex:none;position:relative;border-top:1px solid var(--border);background
   .bmsg{left:12px;right:12px;width:auto;flex-wrap:wrap}
   .bmsg button{height:44px}
 }
+@media (max-width:480px){ .count .cl{display:none} }
 @media (max-height:760px) and (min-width:641px){
   .note{font-size:32px}
   .type{min-height:60px}
