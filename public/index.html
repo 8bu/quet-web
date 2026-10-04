@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>quet</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body class="home">
+  <main id="app">
+    <header class="bar">
+      <h1 class="brand">quet</h1>
+      <div class="bar-end">
+        <span id="who" class="who" hidden></span>
+        <button id="signout" type="button" class="btn" hidden>sign out</button>
+      </div>
+    </header>
+
+    <p id="status" class="note" role="status">loading…</p>
+    <noscript><p class="note err">quet needs JavaScript.</p></noscript>
+
+    <section id="login-panel" hidden aria-labelledby="login-title">
+      <h2 id="login-title" class="title">Sign in</h2>
+      <form id="login-form" class="form" autocomplete="on">
+        <label for="username">username</label>
+        <input id="username" name="username" type="text" autocomplete="username"
+               autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>
+        <label for="password">password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <p id="login-error" class="note err" role="alert" hidden></p>
+        <div class="form-row">
+          <button id="login-submit" type="submit" class="btn primary">sign in</button>
+          <span class="hint"><kbd>enter</kbd> submits</span>
+        </div>
+      </form>
+    </section>
+
+    <section id="projects-panel" hidden aria-labelledby="projects-title">
+      <h2 id="projects-title" class="title">Projects</h2>
+      <ul id="projects" class="projects"></ul>
+      <p id="projects-empty" class="note" hidden>No projects are assigned to you yet.</p>
+      <p class="hint keys"><kbd>j</kbd>/<kbd>k</kbd> move &nbsp; <kbd>enter</kbd> open</p>
+    </section>
+  </main>
+  <script type="module" src="/js/index.js"></script>
+</body>
+</html>

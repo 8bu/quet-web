@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quet labelling · prototype A — focus card</title>
+<style>
+:root { --bg:#f4f1e8; --ink:#1c1a15; --mute:#7a7466; --line:#e0d9c8; --card:#fffdf7; --acc:#2a58c4; --acc-bg:#e6edfb; --hl:#ffd45e; --pend:#cfe0ff; --ok:#1d8a4a; --warn:#b4701b; --bad:#b3261e; }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+button { font:inherit; color:inherit; cursor:pointer; }
+kbd { font:600 11px/1 ui-monospace,Menlo,Consolas,monospace; background:#efe9d9; border:1px solid #d3cbb5; border-bottom-width:2px; border-radius:5px; padding:2px 5px; color:#4b4637; }
+.top { display:flex; align-items:center; gap:24px; padding:12px 28px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:5; }
+.brand { font-weight:700; letter-spacing:.02em; } .brand span { font-weight:400; color:var(--mute); margin-left:8px; font-size:13px; }
+.prog { flex:1; display:flex; align-items:center; gap:14px; min-width:0; }
+.bar { flex:0 1 260px; height:8px; background:#e8e1cf; border-radius:99px; overflow:hidden; }
+.bar i { display:block; height:100%; background:var(--ok); transition:width .25s; }
+#progTxt { font-variant-numeric:tabular-nums; font-size:17px; }
+.chip { display:inline-block; font-size:13px; padding:2px 9px; border-radius:99px; background:#ebe4d2; margin-right:6px; font-variant-numeric:tabular-nums; }
+.chip.s-complete { background:#dff3e6; color:#17683a; } .chip.s-uncertain { background:#fbecc9; color:#8a5a0c; } .chip.s-skipped { background:#e9e6df; color:#615c50; } .chip.s-left { background:transparent; border:1px dashed #cbc3ad; color:var(--mute); }
+.top button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 11px; font-size:13px; margin-left:6px; }
+.stage { display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:22px; max-width:1180px; margin:0 auto; padding:26px 28px 34px; align-items:start; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:26px 34px 22px; box-shadow:0 1px 0 #fff inset, 0 8px 30px rgba(60,50,20,.06); min-height:520px; display:flex; flex-direction:column; }
+.meta { display:flex; justify-content:space-between; align-items:center; color:var(--mute); font-size:13px; letter-spacing:.04em; text-transform:uppercase; }
+.saved { text-transform:none; letter-spacing:0; font-size:13px; padding:2px 10px; border-radius:99px; background:#ece6d6; color:var(--mute); }
+.saved.s-complete { background:#dff3e6; color:#17683a; } .saved.s-uncertain { background:#fbecc9; color:#8a5a0c; } .saved.s-skipped { background:#e9e6df; color:#615c50; }
+.hero { font:400 36px/1.65 Georgia,"Iowan Old Style","Noto Serif",serif; padding:46px 0 26px; white-space:pre-wrap; overflow-wrap:anywhere; user-select:none; -webkit-user-select:none; cursor:text; min-height:170px; }
+.c { padding:3px 0; }
+.c:not(.sp):hover { background:rgba(42,88,196,.13); }
+.c.h { background:var(--hl); } .c.h.act { background:var(--hl); box-shadow:0 3px 0 #d9a400; }
+.c.fs { border-top-left-radius:8px; border-bottom-left-radius:8px; padding-left:2px; } .c.fe { border-top-right-radius:8px; border-bottom-right-radius:8px; padding-right:2px; }
+.c.pend { background:var(--pend); box-shadow:0 3px 0 var(--acc); } .c.ps { border-top-left-radius:8px; border-bottom-left-radius:8px; } .c.pe { border-top-right-radius:8px; border-bottom-right-radius:8px; }
+.spanbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 14px; background:#f7f3e7; border:1px solid var(--line); border-radius:12px; }
+.spanbar .lbl { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+.readout { font:600 15px ui-monospace,Menlo,Consolas,monospace; flex:1; min-width:180px; color:#5d5849; }
+.readout.set { color:var(--ink); } .readout.pending { color:var(--acc); }
+.spanbtns button, .nav button, .pact button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; font-size:13px; }
+.spanbtns button:hover, .nav button:hover, .top button:hover, .pact button:hover:not(:disabled) { border-color:#b9b098; background:#fffaf0; }
+.hint { margin:12px 2px 0; color:var(--mute); font-size:14px; min-height:21px; }
+.proposal { margin-top:18px; border:2px dashed #c9a14a; background:repeating-linear-gradient(135deg,#fffaf0,#fffaf0 10px,#fff6e2 10px,#fff6e2 20px); border-radius:12px; padding:12px 16px; }
+.ph { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:6px; }
+.pt { font-weight:700; color:#8a5a0c; } .pn { font-size:12px; color:var(--mute); }
+.pgrid { display:grid; grid-template-columns:90px 1fr; gap:3px 12px; margin:0; font-size:14px; }
+.pgrid dt { color:var(--mute); } .pgrid dd { margin:0; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; }
+.cbar { display:inline-block; width:80px; height:6px; background:#eadfc5; border-radius:99px; margin-left:10px; vertical-align:middle; overflow:hidden; } .cbar i { display:block; height:100%; background:#c9a14a; }
+.pok { margin-top:8px; color:var(--ok); font-weight:600; font-size:14px; } .pbad { margin-top:8px; color:var(--bad); font-weight:600; font-size:14px; }
+.pact { margin-top:10px; display:flex; gap:8px; } .pact button:disabled { opacity:.45; cursor:not-allowed; }
+.nav { margin-top:auto; padding-top:20px; display:flex; gap:8px; flex-wrap:wrap; }
+.nav button:nth-child(2) { margin-right:auto; }
+.palette { position:sticky; top:74px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 14px 16px; }
+.palette h3 { margin:2px 4px 8px; font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--mute); }
+#types { display:flex; flex-direction:column; gap:5px; }
+.trow, .sbtn { display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 10px; }
+.trow .tn { flex:1; font-weight:600; } .tag { font-size:11px; color:var(--mute); background:#f0ebdc; border-radius:99px; padding:1px 7px; }
+.trow:hover, .sbtn:hover { border-color:#b9b098; }
+.trow.sel { background:var(--acc-bg); border-color:var(--acc); box-shadow:0 0 0 1px var(--acc) inset; }
+.desc { margin:10px 2px 14px; font-size:13px; color:#4f4a3c; min-height:56px; background:#f7f3e7; border-radius:10px; padding:8px 10px; }
+#statuses { display:flex; flex-direction:column; gap:6px; }
+.sbtn { font-weight:600; padding:11px 12px; } .sbtn .sn { flex:1; } .sg { width:18px; text-align:center; font-weight:800; }
+.sbtn.st-complete { border-color:#9fd3b2; } .sbtn.st-complete:hover { background:#eaf8ee; } .sbtn.st-complete .sg { color:var(--ok); }
+.sbtn.st-uncertain { border-color:#e6c882; } .sbtn.st-uncertain:hover { background:#fff6e0; } .sbtn.st-uncertain .sg { color:var(--warn); }
+.sbtn.st-skipped:hover { background:#f0eee8; }
+.sbtn.saved { box-shadow:0 0 0 2px #5a5546 inset; }
+.draft { margin-top:14px; font-size:13px; color:var(--mute); padding:0 4px; }
+.draft b { color:var(--ink); }
+.msg { position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px); opacity:0; pointer-events:none; transition:.18s; background:#26231b; color:#fff; padding:9px 16px; border-radius:10px; max-width:80vw; font-size:14px; z-index:30; }
+.msg.show { opacity:1; transform:translateX(-50%); } .msg.err { background:var(--bad); } .msg.ok { background:#1d5a38; } .msg.warn { background:#8a5a0c; }
+.notes { max-width:1180px; margin:0 auto; padding:10px 28px 60px; color:#4b4637; font-size:13px; border-top:1px solid var(--line); }
+.notes h2 { font-size:14px; margin:18px 0 6px; } .notes p { margin:6px 0; max-width:80ch; }
+.notes table, .sheet table { border-collapse:collapse; } .notes th, .sheet th { text-align:left; font:600 12px ui-monospace,Menlo,Consolas,monospace; padding:3px 18px 3px 0; white-space:nowrap; vertical-align:top; color:#4b4637; } .notes td, .sheet td { padding:3px 0; }
+code { font:12px ui-monospace,Menlo,Consolas,monospace; background:#ece6d6; padding:1px 5px; border-radius:4px; word-break:break-all; }
+.overlay { position:fixed; inset:0; background:rgba(28,26,21,.55); display:flex; align-items:center; justify-content:center; z-index:50; } .overlay.hidden { display:none; }
+.sheet { background:var(--card); border-radius:16px; padding:22px 28px; max-width:720px; max-height:88vh; overflow:auto; } .sheet h2 { margin:0 0 10px; } .small { color:var(--mute); font-size:13px; }
+@media (max-width:860px) { .stage { grid-template-columns:1fr; } .palette { position:static; } .hero { font-size:28px; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">quet<span>prototype A · focus card</span></div>
+  <div class="prog"><div class="bar"><i id="barDone"></i></div><b id="progTxt"></b><span id="counts"></span></div>
+  <div><button id="bUndo">↶ Undo <kbd>z</kbd></button><button id="bHelp">Keys <kbd>?</kbd></button></div>
+</header>
+<main class="stage">
+  <section class="card">
+    <div class="meta"><span id="recMeta"></span><span id="savedChip" class="saved"></span></div>
+    <div id="text" class="hero"></div>
+    <div class="spanbar">
+      <span class="lbl">Target</span><span id="readout" class="readout"></span>
+      <span class="spanbtns"><button id="bSelect">select with keys <kbd>x</kbd></button> <button id="bNull">no target <kbd>n</kbd></button> <button id="bSnap">snap: words <kbd>m</kbd></button></span>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div id="proposal" class="proposal" hidden></div>
+    <nav class="nav">
+      <button id="bPrev">‹ previous <kbd>k</kbd></button><button id="bNext">next <kbd>j</kbd> ›</button>
+      <button id="bOpenPrev">‹ unlabelled <kbd>[</kbd></button><button id="bOpenNext">next unlabelled <kbd>]</kbd> ›</button>
+    </nav>
+  </section>
+  <aside class="palette" id="palette">
+    <h3>Type <span style="text-transform:none;letter-spacing:0">(press 1–4)</span></h3>
+    <div id="types"></div>
+    <div class="desc" id="typeDesc"></div>
+    <h3>Save as</h3>
+    <div id="statuses"></div>
+    <div class="draft" id="draft"></div>
+  </aside>
+</main>
+<div id="msg" class="msg" role="status"></div>
+<footer class="notes">
+  <h2>Prototype notes — A · focus card</h2>
+  <p><b>Design bet.</b> One record at a time, the text is the hero. Everything you can do to a record is on one small palette to the right, always in the same place, so your eyes stay on the sentence. The card says what to do next (the grey hint line) and a record you already saved shows its saved status, so revising feels the same as labelling. A proposal sits in a separate dashed “not accepted” block, never mixed into the draft.</p>
+  <p><b>Try:</b> click a word · drag across several words · double-click · <kbd>1</kbd> then <kbd>enter</kbd> · <kbd>x</kbd> then <kbd>w</kbd> <kbd>enter</kbd> · <kbd>p</kbd> on rv-002/rv-003 · rv-006 has an invalid proposal · rv-008 is Japanese (a whole run is one “word”; press <kbd>m</kbd> to snap to characters).</p>
+  <table id="noteKeys"></table>
+  <p>Saved label for this record (the wire format): <code id="wire"></code></p>
+  <p class="small">Mock data is inline and nothing leaves this page. Reload resets everything.</p>
+</footer>
+<div id="help" class="overlay hidden"><div class="sheet"><h2>Keyboard</h2><table id="helpKeys"></table><p class="small">Press ? or esc to close.</p></div></div>
+<script>
+/* ================= core: model + interaction logic (identical in all three prototypes) ================= */
+let S, recs, labels, proposals = {}, undoStack = [], helpOpen = false, msgTimer = 0;
+const st = { i: 0, draft: null, sel: null, pend: null, active: 0, snap: true, dirty: false, advFrom: undefined, flash: null };
+const $ = id => document.getElementById(id);
+const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const isWordCh = ch => /^[\p{L}\p{N}\p{M}]$/u.test(ch);
+const isSpaceCh = ch => /^\s$/u.test(ch);
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const glyph = name => ({ complete: '\u2713', uncertain: '?', skipped: '\u2013' })[name] || name.charAt(0);
+
+/* ---- records: offsets are Unicode code points (Array.from), end exclusive, like Quet's Go runes ---- */
+function mkRecord(id, text) {
+  const chars = Array.from(text), words = [];
+  let s = -1;
+  for (let i = 0; i <= chars.length; i++) {
+    const w = i < chars.length && isWordCh(chars[i]);
+    if (w && s < 0) s = i;
+    else if (!w && s >= 0) { words.push({ start: s, end: i }); s = -1; }
+  }
+  return { id, text, chars, words };
+}
+const cur = () => recs[st.i];
+const cpSlice = (r, s, e) => r.chars.slice(s, e).join('');
+const wordIdx = (r, i) => r.words.findIndex(w => i >= w.start && i < w.end);
+/* inclusive char indices -> span, trimmed of surrounding whitespace; null when only whitespace */
+function mkSpan(r, lo, hi) {
+  while (lo <= hi && isSpaceCh(r.chars[lo])) lo++;
+  while (hi >= lo && isSpaceCh(r.chars[hi])) hi--;
+  return hi < lo ? null : { text: cpSlice(r, lo, hi + 1), start: lo, end: hi + 1 };
+}
+const fmtSpan = s => s === null ? 'null' : '"' + s.text + '" [' + s.start + ',' + s.end + ')';
+function snapRange(r, a, h) {
+  let lo = Math.min(a, h), hi = Math.max(a, h), w = wordIdx(r, lo);
+  if (w >= 0) lo = r.words[w].start;
+  w = wordIdx(r, hi);
+  if (w >= 0) hi = r.words[w].end - 1;
+  return [lo, hi];
+}
+function findSpan(r, sub, nth) {
+  const sc = Array.from(sub);
+  let c = 0;
+  for (let i = 0; i + sc.length <= r.chars.length; i++) {
+    let ok = true;
+    for (let j = 0; j < sc.length; j++) if (r.chars[i + j] !== sc[j]) { ok = false; break; }
+    if (ok && c++ === (nth || 0)) return { text: sub, start: i, end: i + sc.length };
+  }
+  console.warn('mock data: "' + sub + '" not found in ' + r.id);
+  return null;
+}
+
+/* ---- schema rules / labels (mirrors shared/schema.ts: normalizeLabel + validateLabel) ---- */
+const isNullFor = (sp, type) => type != null && sp.null_for_types.includes(type);
+function mkLabel(rec, status, d) {
+  const L = { id: rec.id, annotation_status: status };
+  if (S.null_label_statuses.includes(status)) {
+    L.type = null;
+    S.spans.forEach(sp => { L[sp.name] = null; });
+    return L;
+  }
+  L.type = d.type;
+  S.spans.forEach(sp => { L[sp.name] = isNullFor(sp, d.type) ? null : (d.spans[sp.name] || null); });
+  const ss = {};
+  S.spans.forEach(sp => {
+    if (sp.statuses.length && !isNullFor(sp, d.type)) ss[sp.name] = d.spanStatus[sp.name] || sp.statuses[0];
+  });
+  if (Object.keys(ss).length) L.span_status = ss;
+  return L;
+}
+function spanProblem(r, name, v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== 'object' || !Number.isInteger(v.start) || !Number.isInteger(v.end)) return name + ': expected {text,start,end} or null';
+  const n = r.chars.length;
+  if (v.start < 0 || v.end <= v.start || v.end > n) return name + ': [' + v.start + ',' + v.end + ') is outside the text (' + n + ' characters)';
+  const t = cpSlice(r, v.start, v.end);
+  if (v.text !== t) return name + ': text "' + v.text + '" does not match "' + t + '" at [' + v.start + ',' + v.end + ')';
+  if (/^\s|\s$/u.test(t)) return name + ': starts or ends with whitespace';
+  return null;
+}
+function problems(r, L) {
+  const p = [];
+  if (!S.statuses.some(s => s.name === L.annotation_status)) p.push('annotation_status: "' + L.annotation_status + '" is not declared');
+  if (L.type == null) { if (L.annotation_status === 'complete') p.push('type: required when complete'); }
+  else if (!S.types.some(t => t.name === L.type)) p.push('type: "' + L.type + '" is not declared');
+  S.spans.forEach(sp => {
+    const v = L[sp.name], e = spanProblem(r, sp.name, v);
+    if (e) p.push(e);
+    else if (v && isNullFor(sp, L.type)) p.push(sp.name + ': must be null for type "' + L.type + '"');
+  });
+  const ss = L.span_status || {};
+  Object.keys(ss).forEach(k => {
+    const sp = S.spans.find(x => x.name === k);
+    if (!sp) p.push('span_status.' + k + ': not a declared span');
+    else if (!sp.statuses.length) p.push('span_status.' + k + ': span declares no statuses');
+    else if (!sp.statuses.includes(ss[k])) p.push('span_status.' + k + ': "' + ss[k] + '" is not one of [' + sp.statuses.join(', ') + ']');
+  });
+  return p;
+}
+
+/* ---- dataset loading ---- */
+function loadData(schema, queue, propsFn, seedFn) {
+  S = schema;
+  recs = queue.map(q => mkRecord(q.id, q.text));
+  labels = {}; undoStack = []; proposals = {};
+  const R = {};
+  recs.forEach(r => { R[r.id] = r; });
+  if (propsFn) propsFn(R).forEach(p => { proposals[p.id] = p; });
+  if (seedFn) seedFn(R).forEach(L => { labels[L.id] = L; });
+  st.active = 0;
+  st.i = Math.max(0, recs.findIndex(r => !labels[r.id]));
+  loadDraft();
+}
+function loadDraft() {
+  const r = cur(), L = labels[r.id], d = { type: null, spans: {}, spanStatus: {} };
+  if (L) {
+    d.type = L.type;
+    if (!S.null_label_statuses.includes(L.annotation_status)) S.spans.forEach(sp => { d.spans[sp.name] = L[sp.name] === undefined ? null : L[sp.name]; });
+    Object.assign(d.spanStatus, L.span_status || {});
+  }
+  st.draft = d; st.sel = null; st.pend = null; st.dirty = false;
+}
+function counts() {
+  const c = { total: recs.length, labelled: 0, by: {} };
+  S.statuses.forEach(s => { c.by[s.name] = 0; });
+  recs.forEach(r => { const L = labels[r.id]; if (L) { c.labelled++; c.by[L.annotation_status] = (c.by[L.annotation_status] || 0) + 1; } });
+  return c;
+}
+function renderCounts(box) {
+  const c = counts();
+  box.textContent = '';
+  S.statuses.forEach(s => box.appendChild(mk('span', 'chip s-' + s.name, glyph(s.name) + ' ' + c.by[s.name])));
+  box.appendChild(mk('span', 'chip s-left', (c.total - c.labelled) + ' left'));
+  return c;
+}
+const fieldLabel = f => S.implicit_target ? 'Target' : cap(f.name);
+function describeField(f) {
+  const d = st.draft, v = d.spans[f.name], locked = isNullFor(f, d.type);
+  if (locked) return 'null \u2014 ' + d.type + ' has no ' + f.name;
+  let t = v === undefined ? 'not marked yet' : fmtSpan(v);
+  if (f.statuses.length) { const s = d.spanStatus[f.name]; t += ' \u00b7 ' + (s || f.statuses[0]) + (s ? '' : ' (default)'); }
+  return t;
+}
+/* live readout of the span being selected (drag or x mode); null when nothing is pending */
+function pendRange() {
+  if (st.pend) return st.pend;
+  if (st.sel) return { lo: Math.min(st.sel.a, st.sel.h), hi: Math.max(st.sel.a, st.sel.h) };
+  return null;
+}
+function pendReadout() {
+  const p = pendRange();
+  if (!p) return null;
+  const sp = mkSpan(cur(), p.lo, p.hi);
+  return sp ? fmtSpan(sp) : '(only spaces)';
+}
+function nextHint() {
+  const d = st.draft;
+  if (st.sel) return 'enter accept \u00b7 esc cancel \u00b7 \u2190/\u2192 move \u00b7 shift+\u2190/\u2192 extend \u00b7 w/b words';
+  if (!st.dirty && labels[cur().id]) return 'saved \u00b7 j next \u00b7 ] next unlabelled \u00b7 change anything and save again to revise';
+  if (d.type == null) return 'pick a type: 1\u2013' + Math.min(9, S.types.length) + ' \u00b7 or s to skip';
+  const f = S.spans.find(sp => !isNullFor(sp, d.type) && d.spans[sp.name] === undefined);
+  if (f) return 'mark the ' + f.name + ': click or drag the text, or x \u00b7 n if there is none';
+  return 'press enter to save as complete \u00b7 u uncertain \u00b7 s skip';
+}
+
+/* ---- messages ---- */
+function say(msg, kind) {
+  const el = $('msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'msg show ' + (kind || '');
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { el.className = 'msg'; }, 4200);
+}
+
+/* ---- text rendering: one <span class="c" data-i> per code point ---- */
+function renderText(box) {
+  const r = cur();
+  if (box.dataset.rid !== r.id) {
+    box.textContent = '';
+    box.dataset.rid = r.id;
+    const frag = document.createDocumentFragment();
+    r.chars.forEach((ch, i) => { const s = mk('span', 'c', ch); s.dataset.i = i; frag.appendChild(s); });
+    box.appendChild(frag);
+  }
+  paintText(box);
+}
+function paintText(box) {
+  const r = cur(), n = r.chars.length, kids = box.children, cov = new Array(n).fill(-1), act = st.active, d = st.draft;
+  S.spans.forEach((f, fi) => { const v = d.spans[f.name]; if (v && fi !== act) for (let i = v.start; i < v.end && i < n; i++) cov[i] = fi; });
+  const va = d.spans[S.spans[act].name];
+  if (va) for (let i = va.start; i < va.end && i < n; i++) cov[i] = act;
+  const p = pendRange();
+  for (let i = 0; i < n; i++) {
+    const el = kids[i];
+    if (!el) continue;
+    let cls = 'c' + (isSpaceCh(r.chars[i]) ? ' sp' : '');
+    const f = cov[i];
+    if (f >= 0) {
+      const v = d.spans[S.spans[f].name];
+      cls += ' h h' + f + (f === act ? ' act' : '');
+      if (v.start === i) cls += ' fs';
+      if (v.end - 1 === i) cls += ' fe';
+    }
+    if (p && i >= p.lo && i <= p.hi) { cls += ' pend'; if (i === p.lo) cls += ' ps'; if (i === p.hi) cls += ' pe'; }
+    if (el.className !== cls) el.className = cls;
+  }
+}
+function paint() { paintText($('text')); if (typeof onPaint === 'function') onPaint(); }
+
+/* ---- draft edits ---- */
+function setType(n) {
+  const t = S.types[n];
+  if (!t) return say('no type ' + (n + 1) + ' \u2014 this schema has ' + S.types.length, 'err');
+  const d = st.draft, old = d.type;
+  S.spans.forEach(sp => {
+    const was = isNullFor(sp, old), now = isNullFor(sp, t.name);
+    if (now) { d.spans[sp.name] = null; delete d.spanStatus[sp.name]; }
+    else if (was) delete d.spans[sp.name];
+  });
+  d.type = t.name; st.dirty = true; st.sel = null;
+  if (isNullFor(S.spans[st.active], t.name)) { const k = S.spans.findIndex(sp => !isNullFor(sp, t.name)); if (k >= 0) st.active = k; }
+  say(t.name + ': ' + t.description);
+  render();
+}
+function advanceActive() {
+  const n = S.spans.length, d = st.draft;
+  if (n < 2) return;
+  for (let k = 1; k < n; k++) {
+    const j = (st.active + k) % n, f = S.spans[j];
+    if (!isNullFor(f, d.type) && d.spans[f.name] === undefined) { st.advFrom = st.active; st.active = j; return; }
+  }
+}
+function setSpan(sp) {
+  const f = S.spans[st.active], d = st.draft;
+  if (isNullFor(f, d.type)) { say(f.name + ' must be null for ' + d.type + (S.spans.length > 1 ? ' \u2014 tab switches field' : ' \u2014 pick another type first'), 'err'); render(); return false; }
+  d.spans[f.name] = sp; st.dirty = true;
+  say(fieldLabel(f) + ' ' + fmtSpan(sp), 'ok');
+  advanceActive();
+  render();
+  return true;
+}
+function nullField() {
+  const f = S.spans[st.active], d = st.draft;
+  st.sel = null;
+  if (isNullFor(f, d.type)) { say(f.name + ' is already null for ' + d.type, 'err'); render(); return; }
+  d.spans[f.name] = null; st.dirty = true;
+  say(fieldLabel(f) + ' set to null (there is none)', 'ok');
+  advanceActive();
+  render();
+}
+function switchField(dir) {
+  const n = S.spans.length;
+  if (n < 2) return;
+  st.active = (st.active + dir + n) % n;
+  say('active field: ' + S.spans[st.active].name);
+  render();
+}
+function cycleSpanStatus() {
+  const f = S.spans[st.active], d = st.draft;
+  if (!f.statuses.length) return say('span ' + f.name + ' declares no statuses', 'err');
+  if (isNullFor(f, d.type)) return say(f.name + ' is null for ' + d.type + ' \u2014 it has no status', 'err');
+  const now = d.spanStatus[f.name] || f.statuses[0];
+  d.spanStatus[f.name] = f.statuses[(f.statuses.indexOf(now) + 1) % f.statuses.length];
+  st.dirty = true;
+  say(f.name + ' status: ' + d.spanStatus[f.name], 'ok');
+  render();
+}
+function discard() {
+  if (!st.dirty) return say('nothing to discard');
+  loadDraft(); say('draft discarded'); render();
+}
+
+/* ---- saving, undo, navigation ---- */
+function putLabel(L) { undoStack.push({ id: L.id, prev: labels[L.id] }); labels[L.id] = L; }
+function save(status) {
+  const r = cur(), d = st.draft;
+  if (!S.statuses.some(s => s.name === status)) return say('this schema has no "' + status + '" status', 'err');
+  const clears = S.null_label_statuses.includes(status);
+  if (!clears && status === 'complete') {
+    if (d.type == null) return say('pick a type first (1\u2013' + Math.min(9, S.types.length) + '), or press s to skip', 'err');
+    const miss = S.spans.find(sp => !isNullFor(sp, d.type) && d.spans[sp.name] === undefined);
+    if (miss) return say(miss.name + " isn't marked \u2014 click or drag the text (or x), or press n if there is none", 'err');
+  }
+  const L = mkLabel(r, status, d), bad = problems(r, L);
+  if (bad.length) return say(bad.join('; '), 'err');
+  const revised = !!labels[r.id];
+  putLabel(L); st.dirty = false; st.flash = r.id;
+  say((revised ? 'revised ' : 'saved ') + glyph(status) + ' ' + status + ' \u00b7 ' + r.id + (clears ? ' (type and spans cleared)' : ''), 'ok');
+  advance();
+}
+function undo() {
+  const u = undoStack.pop();
+  if (!u) return say('nothing to undo', 'err');
+  if (u.prev) labels[u.id] = u.prev; else delete labels[u.id];
+  st.i = recs.findIndex(r => r.id === u.id);
+  loadDraft();
+  say('undone \u2014 back on ' + u.id + (u.prev ? ' with its previous label' : ', unlabelled again'), 'ok');
+  render();
+}
+function nextOpen(dir) {
+  const n = recs.length;
+  for (let k = 1; k < n; k++) {
+    const j = (((st.i + dir * k) % n) + n) % n;
+    if (!labels[recs[j].id]) return j;
+  }
+  return -1;
+}
+function go(i) {
+  const was = st.dirty;
+  st.i = i; loadDraft();
+  if (was) say('unsaved draft discarded', 'warn');
+  render();
+}
+function advance() {
+  const j = nextOpen(1);
+  if (j >= 0) go(j);
+  else { loadDraft(); say('every record is labelled \u2014 nice work', 'ok'); render(); }
+}
+function step(dir) {
+  const j = st.i + dir;
+  if (j < 0 || j >= recs.length) return say(dir < 0 ? 'first record' : 'last record', 'err');
+  go(j);
+}
+function jumpOpen(dir) {
+  const j = nextOpen(dir);
+  if (j < 0) return say('no other unlabelled record');
+  go(j);
+}
+
+/* ---- proposals (advisory; never written unless accepted) ---- */
+function fillProposal(P) {
+  const o = Object.assign({}, P);
+  if (o.type === undefined) o.type = null;
+  S.spans.forEach(sp => { if (o[sp.name] === undefined) o[sp.name] = null; });
+  return o;
+}
+function propInfo(r) {
+  const P = proposals[r.id];
+  if (!P) return null;
+  const full = fillProposal(P), errs = problems(r, full);
+  let asLabel = null;
+  if (!errs.length) asLabel = mkLabel(r, P.annotation_status, { type: full.type, spans: full, spanStatus: P.span_status || {} });
+  const L = labels[r.id];
+  return { P, full, errs, asLabel, matches: !!(asLabel && L && JSON.stringify(asLabel) === JSON.stringify(L)) };
+}
+function propRows(info) {
+  const P = info.P, rows = [['Status', glyph(P.annotation_status) + ' ' + P.annotation_status], ['Type', P.type == null ? 'null' : P.type]];
+  S.spans.forEach(sp => {
+    let t = fmtSpan(info.full[sp.name]);
+    const ss = (P.span_status || {})[sp.name];
+    if (ss) t += ' \u00b7 ' + ss;
+    rows.push([fieldLabel(sp), t]);
+  });
+  rows.push(['Confidence', P.confidence == null ? '-' : P.confidence.toFixed(2)]);
+  if (P.reason) rows.push(['Reason', P.reason]);
+  if (P.note) rows.push(['Note', P.note]);
+  return rows;
+}
+function acceptProposal() {
+  const r = cur(), info = propInfo(r);
+  if (!info) return say('no proposal for ' + r.id, 'err');
+  if (info.errs.length) return say('\u26a0 invalid: ' + info.errs.join('; '), 'err');
+  putLabel(info.asLabel); st.dirty = false; st.flash = r.id;
+  say('accepted the proposal \u2192 ' + glyph(info.asLabel.annotation_status) + ' ' + info.asLabel.annotation_status + ' \u00b7 ' + r.id + ' (z undoes)', 'ok');
+  advance();
+}
+function loadProposal() {
+  const r = cur(), info = propInfo(r);
+  if (!info) return say('no proposal for ' + r.id, 'err');
+  if (info.errs.length) return say('\u26a0 invalid: ' + info.errs.join('; '), 'err');
+  const d = { type: info.full.type, spans: {}, spanStatus: Object.assign({}, info.P.span_status || {}) };
+  S.spans.forEach(sp => {
+    if (isNullFor(sp, d.type)) { d.spans[sp.name] = null; delete d.spanStatus[sp.name]; }
+    else d.spans[sp.name] = info.full[sp.name];
+  });
+  st.draft = d; st.dirty = true; st.sel = null;
+  say('proposal loaded into draft \u2014 edit, then enter/u/s to save', 'ok');
+  render();
+}
+
+/* ---- keyboard span mode (x) ---- */
+function startSpan() {
+  const r = cur(), f = S.spans[st.active], d = st.draft;
+  if (isNullFor(f, d.type)) return say(f.name + ' must be null for ' + d.type + (S.spans.length > 1 ? ' \u2014 tab switches field' : ' \u2014 pick another type first'), 'err');
+  if (!r.chars.length) return say('this record has no text', 'err');
+  const ex = d.spans[f.name], w = r.words[0];
+  st.sel = ex ? { a: ex.start, h: ex.end - 1 } : w ? { a: w.start, h: w.end - 1 } : { a: 0, h: 0 };
+  render();
+}
+function spanKey(e) {
+  const r = cur(), n = r.chars.length, s = st.sel, k = e.key;
+  const clamp = v => Math.max(0, Math.min(n - 1, v));
+  const lo = () => Math.min(s.a, s.h), hi = () => Math.max(s.a, s.h);
+  const pickWord = w => { s.a = w.start; s.h = w.end - 1; };
+  const under = () => { const i = wordIdx(r, s.h); return i >= 0 ? r.words[i] : null; };
+  const isSel = w => !!w && lo() === w.start && hi() === w.end - 1;
+  const single = () => lo() === hi() && !isWordCh(r.chars[lo()]);
+  let handled = true;
+  switch (k) {
+    case 'h': case 'ArrowLeft': if (e.shiftKey) s.h = clamp(s.h - 1); else s.a = s.h = clamp(s.h - 1); break;
+    case 'l': case 'ArrowRight': if (e.shiftKey) s.h = clamp(s.h + 1); else s.a = s.h = clamp(s.h + 1); break;
+    case 'H': s.h = clamp(s.h - 1); break;
+    case 'L': s.h = clamp(s.h + 1); break;
+    case 'w': {
+      const w = under();
+      if (w && !isSel(w)) pickWord(w);
+      else { const nx = r.words.find(x => x.start > hi()); if (nx) pickWord(nx); else say('no next word'); }
+      break;
+    }
+    case 'b': {
+      const w = under();
+      if (w && !isSel(w)) pickWord(w);
+      else { const pv = r.words.slice().reverse().find(x => x.end - 1 < lo()); if (pv) pickWord(pv); else say('no previous word'); }
+      break;
+    }
+    case 'W': {
+      if (single()) { const nx = r.words.find(x => x.start > hi()); if (nx) pickWord(nx); }
+      else { const nx = r.words.find(x => x.end - 1 > s.h); if (nx) s.h = nx.end - 1; else say('no next word'); }
+      break;
+    }
+    case 'B': {
+      if (single()) { const pv = r.words.slice().reverse().find(x => x.end - 1 < lo()); if (pv) pickWord(pv); }
+      else { const pv = r.words.slice().reverse().find(x => x.start < s.h); if (pv) s.h = pv.start; else say('no previous word'); }
+      break;
+    }
+    case '0': case 'Home': s.a = s.h = 0; break;
+    case '$': case 'End': s.a = s.h = n - 1; break;
+    case 'Enter': {
+      if (isSpaceCh(r.chars[lo()]) || isSpaceCh(r.chars[hi()])) { say('the selection starts or ends with a space \u2014 move it onto letters', 'err'); break; }
+      const sp = mkSpan(r, lo(), hi());
+      st.sel = null;
+      setSpan(sp);
+      e.preventDefault();
+      return;
+    }
+    case 'n': e.preventDefault(); nullField(); return;
+    case 'Escape': st.sel = null; say('span selection cancelled'); break;
+    case 'Tab': if (S.spans.length > 1) { st.active = (st.active + (e.shiftKey ? -1 : 1) + S.spans.length) % S.spans.length; say('writing to: ' + S.spans[st.active].name); } else handled = false; break;
+    default: handled = false;
+  }
+  if (handled) e.preventDefault();
+  render();
+}
+
+/* ---- mouse: click a word, drag a range, double-click snaps to a word ---- */
+function bindMouse(box) {
+  let down = null, lastT = 0, lastI = -2;
+  const at = (x, y) => { const el = document.elementFromPoint(x, y), c = el && el.closest ? el.closest('.c') : null; return c && box.contains(c) ? +c.dataset.i : -1; };
+  const range = d => d.dbl || st.snap ? snapRange(cur(), d.a, d.h) : [Math.min(d.a, d.h), Math.max(d.a, d.h)];
+  box.addEventListener('selectstart', e => e.preventDefault());
+  box.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || helpOpen) return;
+    const i = at(e.clientX, e.clientY);
+    if (i < 0) return;
+    e.preventDefault();
+    const now = Date.now(), dbl = i === lastI && now - lastT < 450;
+    lastT = now; lastI = i;
+    if (!dbl) st.advFrom = undefined;
+    down = { a: i, h: i, dbl };
+    const [lo, hi] = range(down);
+    st.pend = { lo, hi };
+    paint();
+  });
+  document.addEventListener('pointermove', e => {
+    if (!down) return;
+    const i = at(e.clientX, e.clientY);
+    if (i < 0 || i === down.h) return;
+    down.h = i;
+    const [lo, hi] = range(down);
+    st.pend = { lo, hi };
+    paint();
+  });
+  document.addEventListener('pointerup', () => {
+    if (!down) return;
+    const d = down;
+    down = null; st.pend = null;
+    const [lo, hi] = range(d), sp = mkSpan(cur(), lo, hi);
+    if (d.dbl && st.advFrom !== undefined) { st.active = st.advFrom; st.advFrom = undefined; }
+    if (!sp) { say("a space can't be marked \u2014 click a word", 'err'); render(); return; }
+    st.sel = null;
+    setSpan(sp);
+  });
+  document.addEventListener('pointercancel', () => { down = null; st.pend = null; paint(); });
+}
+
+/* ---- help overlay, key map ---- */
+function toggleHelp(v) { helpOpen = v; $('help').classList.toggle('hidden', !v); }
+function keymapRows(extra) {
+  const nt = Math.min(9, S.types.length);
+  const rows = [
+    ['1\u2013' + nt, 'set the type (schema order)'],
+    ['enter \u00b7 u \u00b7 s', 'save as complete \u00b7 uncertain \u00b7 skipped'],
+    ['x', 'mark the span with the keyboard: \u2190/\u2192 (h/l) move, shift+\u2190/\u2192 (H/L) extend, w/b/W/B words, 0/$ ends, enter accept, esc cancel'],
+    ['n', 'null the span (there is none)'],
+    ['j \u00b7 k  (\u2193 \u2191 \u2192 \u2190)', 'next \u00b7 previous record'],
+    ['] \u00b7 [', 'next \u00b7 previous unlabelled record'],
+    ['z', 'undo the last save'],
+    ['esc', 'discard the unsaved draft'],
+    ['m', 'mouse snaps to words \u2194 characters']
+  ];
+  if (S.spans.length > 1) rows.push(['tab \u00b7 shift+tab', 'switch the active span field']);
+  if (S.spans.some(f => f.statuses.length)) rows.push(['c', "cycle the active field's span status"]);
+  if (Object.keys(proposals).length) rows.push(['p \u00b7 P', 'accept the proposal \u00b7 load it into the draft']);
+  (extra || []).forEach(x => rows.push(x));
+  rows.push(['?', 'show / hide this help']);
+  rows.push(['mouse', 'click a word \u00b7 drag a range \u00b7 double-click snaps to a word']);
+  return rows;
+}
+function fillKeymap(table, extra) {
+  table.textContent = '';
+  keymapRows(extra).forEach(r => { const tr = mk('tr'); tr.appendChild(mk('th', null, r[0])); tr.appendChild(mk('td', null, r[1])); table.appendChild(tr); });
+}
+
+/* ---- global keyboard ---- */
+document.addEventListener('mousedown', e => { if (e.target.closest && e.target.closest('button')) e.preventDefault(); });
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (helpOpen) { if (k === 'Escape' || k === '?' || k === 'Enter') toggleHelp(false); e.preventDefault(); return; }
+  if (k === '?') { e.preventDefault(); toggleHelp(true); return; }
+  if (st.sel) { spanKey(e); return; }
+  if (typeof extra === 'function' && extra(e)) { e.preventDefault(); return; }
+  let handled = true;
+  if (/^[1-9]$/.test(k)) setType(+k - 1);
+  else switch (k) {
+    case 'Enter': if (!e.repeat) save('complete'); break;
+    case 'u': if (!e.repeat) save('uncertain'); break;
+    case 's': if (!e.repeat) save('skipped'); break;
+    case 'x': startSpan(); break;
+    case 'n': nullField(); break;
+    case 'z': case 'Z': if (!e.repeat) undo(); break;
+    case 'j': case 'ArrowDown': case 'ArrowRight': step(1); break;
+    case 'k': case 'ArrowUp': case 'ArrowLeft': step(-1); break;
+    case ']': jumpOpen(1); break;
+    case '[': jumpOpen(-1); break;
+    case 'p': if (!e.repeat) acceptProposal(); break;
+    case 'P': loadProposal(); break;
+    case 'Escape': discard(); break;
+    case 'm': st.snap = !st.snap; say('mouse selection snaps to ' + (st.snap ? 'words' : 'characters')); render(); break;
+    case 'Tab': if (S.spans.length > 1) switchField(e.shiftKey ? -1 : 1); else handled = false; break;
+    case 'c': if (S.implicit_target) say('this schema has no span statuses', 'err'); else cycleSpanStatus(); break;
+    default: handled = false;
+  }
+  if (handled) e.preventDefault();
+});
+/* ================= mock data: examples/annotation/schema.yaml + queue.jsonl (inline, no network) ================= */
+const SENTIMENT = {
+  version: 'sentiment-v1',
+  types: [
+    { name: 'positive', description: 'The writer is pleased with the aspect named by the target.' },
+    { name: 'negative', description: 'The writer is unhappy with the aspect named by the target.' },
+    { name: 'mixed', description: 'Both praise and complaint about the same aspect.' },
+    { name: 'neutral', description: 'A factual statement with no sentiment; there is nothing to point at.' }
+  ],
+  statuses: [
+    { name: 'complete', description: 'Type and target (or an explicit null target) confidently determined.' },
+    { name: 'uncertain', description: 'The text does not settle the type or the target.' },
+    { name: 'skipped', description: 'Not a review, or not worth labelling.' }
+  ],
+  null_label_statuses: ['skipped'],
+  implicit_target: true,
+  spans: [{ name: 'target', description: '', null_for_types: ['neutral'], statuses: [] }]
+};
+const SENTIMENT_QUEUE = [
+  { id: 'rv-001', text: 'The pho was amazing, best broth in town' },
+  { id: 'rv-002', text: 'Phở ở đây ngon tuyệt, nước dùng rất đậm đà' },
+  { id: 'rv-003', text: 'Nhân viên phục vụ chậm quá, chờ 40 phút' },
+  { id: 'rv-004', text: 'Delivery was late but the driver was really kind' },
+  { id: 'rv-005', text: 'Open from 7am to 10pm, closed on Mondays' },
+  { id: 'rv-006', text: 'Café sữa đá hơi ngọt, nhưng giá rẻ' },
+  { id: 'rv-007', text: 'Die Suppe war kalt und viel zu salzig' },
+  { id: 'rv-008', text: 'ラーメンが最高でした 🍜' },
+  { id: 'rv-009', text: 'asdf test test' }
+];
+/* mock proposals (advisory, like `quet annotate --proposals`): one is deliberately invalid */
+const sentimentProposals = R => [
+  { id: 'rv-001', annotation_status: 'complete', type: 'positive', target: findSpan(R['rv-001'], 'broth'), confidence: 0.84, reason: '"best broth in town" praises the broth' },
+  { id: 'rv-002', annotation_status: 'complete', type: 'positive', target: findSpan(R['rv-002'], 'nước dùng'), note: 'praised broth', confidence: 0.91, reason: 'explicit praise of the broth' },
+  { id: 'rv-003', annotation_status: 'uncertain', type: null, target: null, confidence: 0.35, reason: 'slow service, but the text does not say whether staff or waiting time is the aspect' },
+  { id: 'rv-004', annotation_status: 'complete', type: 'negative', target: findSpan(R['rv-004'], 'Delivery'), confidence: 0.62, reason: 'late delivery; the kind driver may deserve a separate label' },
+  { id: 'rv-005', annotation_status: 'complete', type: 'neutral', target: null, confidence: 0.97, reason: 'opening hours, no sentiment' },
+  { id: 'rv-006', annotation_status: 'complete', type: 'mixed', target: { text: 'cà phê', start: 0, end: 6 }, confidence: 0.7, reason: 'sweet but cheap' },
+  { id: 'rv-009', annotation_status: 'skipped', type: null, target: null, confidence: 0.88, reason: 'not a review' }
+];
+/* labels already "saved" so the progress display and the list have something to show */
+const sentimentSeed = R => [
+  mkLabel(R['rv-002'], 'complete', { type: 'positive', spans: { target: findSpan(R['rv-002'], 'nước dùng') }, spanStatus: {} }),
+  mkLabel(R['rv-005'], 'complete', { type: 'neutral', spans: {}, spanStatus: {} }),
+  mkLabel(R['rv-009'], 'skipped', { type: null, spans: {}, spanStatus: {} })
+];
+
+loadData(SENTIMENT, SENTIMENT_QUEUE, sentimentProposals, sentimentSeed);
+
+/* ---------------- prototype A: render ---------------- */
+const KEYCAP = { complete: '\u23ce', uncertain: 'u', skipped: 's' };
+let hoverDesc = null;
+function descText() {
+  if (hoverDesc) return hoverDesc;
+  const t = S.types.find(x => x.name === st.draft.type);
+  return t ? t.name + ' \u2014 ' + t.description : 'Pick a type to see what it means.';
+}
+function onPaint() {
+  const f = S.spans[0], ro = $('readout'), p = pendReadout();
+  if (p) { ro.textContent = p; ro.className = 'readout pending'; }
+  else { ro.textContent = describeField(f); ro.className = 'readout' + (st.draft.spans[f.name] ? ' set' : ''); }
+}
+function renderTypes() {
+  const box = $('types');
+  box.textContent = '';
+  S.types.forEach((t, i) => {
+    const b = mk('button', 'trow' + (st.draft.type === t.name ? ' sel' : ''));
+    b.tabIndex = -1;
+    b.dataset.desc = t.name + ' \u2014 ' + t.description;
+    b.appendChild(mk('kbd', null, i < 9 ? String(i + 1) : ''));
+    b.appendChild(mk('span', 'tn', t.name));
+    if (S.spans[0].null_for_types.includes(t.name)) b.appendChild(mk('span', 'tag', 'no target'));
+    b.onclick = () => setType(i);
+    box.appendChild(b);
+  });
+  $('typeDesc').textContent = descText();
+}
+function renderStatuses() {
+  const box = $('statuses'), L = labels[cur().id];
+  box.textContent = '';
+  S.statuses.forEach(s => {
+    const b = mk('button', 'sbtn st-' + s.name + (L && L.annotation_status === s.name ? ' saved' : ''));
+    b.tabIndex = -1;
+    b.dataset.desc = s.name + ' \u2014 ' + s.description;
+    b.appendChild(mk('span', 'sg', glyph(s.name)));
+    b.appendChild(mk('span', 'sn', s.name));
+    if (KEYCAP[s.name]) b.appendChild(mk('kbd', null, KEYCAP[s.name]));
+    b.onclick = () => save(s.name);
+    box.appendChild(b);
+  });
+}
+function renderProposal() {
+  const box = $('proposal'), info = propInfo(cur());
+  box.textContent = '';
+  box.hidden = !info;
+  if (!info) return;
+  const head = mk('div', 'ph');
+  head.appendChild(mk('span', 'pt', 'Proposal \u2014 not accepted'));
+  head.appendChild(mk('span', 'pn', 'advisory \u00b7 nothing is saved unless you accept'));
+  box.appendChild(head);
+  const dl = mk('dl', 'pgrid');
+  propRows(info).forEach(row => {
+    dl.appendChild(mk('dt', null, row[0]));
+    const dd = mk('dd', null, row[1]);
+    if (row[0] === 'Confidence' && info.P.confidence != null) {
+      const bar = mk('span', 'cbar'), fill = mk('i');
+      fill.style.width = (info.P.confidence * 100) + '%';
+      bar.appendChild(fill); dd.appendChild(bar);
+    }
+    dl.appendChild(dd);
+  });
+  box.appendChild(dl);
+  if (info.errs.length) box.appendChild(mk('div', 'pbad', '\u26a0 invalid: ' + info.errs.join('; ')));
+  else if (info.matches) box.appendChild(mk('div', 'pok', '\u2713 matches current'));
+  const act = mk('div', 'pact'), a = mk('button'), l = mk('button');
+  a.tabIndex = -1; l.tabIndex = -1;
+  a.disabled = info.errs.length > 0;
+  a.appendChild(document.createTextNode('Accept ')); a.appendChild(mk('kbd', null, 'p'));
+  l.appendChild(document.createTextNode('Load into draft ')); l.appendChild(mk('kbd', null, 'P'));
+  a.onclick = acceptProposal; l.onclick = loadProposal;
+  act.appendChild(a); act.appendChild(l); box.appendChild(act);
+}
+function render() {
+  const r = cur(), L = labels[r.id], d = st.draft, f = S.spans[0], c = renderCounts($('counts'));
+  $('progTxt').textContent = (st.i + 1) + ' / ' + recs.length;
+  $('barDone').style.width = (100 * c.labelled / c.total) + '%';
+  $('recMeta').textContent = 'Record ' + (st.i + 1) + ' \u00b7 ' + r.id;
+  const sc = $('savedChip');
+  sc.className = 'saved' + (L ? ' s-' + L.annotation_status : '');
+  sc.textContent = L ? 'Saved ' + glyph(L.annotation_status) + ' ' + L.annotation_status + (st.dirty ? ' \u00b7 edited, not saved' : '') : (st.dirty ? 'Draft \u00b7 not saved' : 'Not labelled yet');
+  renderText($('text'));
+  onPaint();
+  $('bSnap').firstChild.nodeValue = 'snap: ' + (st.snap ? 'words' : 'characters') + ' ';
+  renderTypes(); renderStatuses(); renderProposal();
+  $('hint').textContent = nextHint();
+  $('draft').textContent = '';
+  $('draft').appendChild(document.createTextNode('Draft: '));
+  $('draft').appendChild(mk('b', null, d.type || 'no type yet'));
+  $('draft').appendChild(document.createTextNode(' \u00b7 ' + (f && d.spans[f.name] ? d.spans[f.name].text : d.spans[f.name] === null ? 'no target' : 'no target marked')));
+  $('wire').textContent = L ? JSON.stringify(L) : '(not labelled yet)';
+  st.flash = null;
+}
+bindMouse($('text'));
+$('palette').addEventListener('mouseover', e => { const b = e.target.closest('[data-desc]'); hoverDesc = b ? b.dataset.desc : null; $('typeDesc').textContent = descText(); });
+$('palette').addEventListener('mouseleave', () => { hoverDesc = null; $('typeDesc').textContent = descText(); });
+$('bUndo').onclick = undo; $('bHelp').onclick = () => toggleHelp(true);
+$('bSelect').onclick = startSpan; $('bNull').onclick = nullField;
+$('bSnap').onclick = () => { st.snap = !st.snap; render(); };
+$('bPrev').onclick = () => step(-1); $('bNext').onclick = () => step(1);
+$('bOpenPrev').onclick = () => jumpOpen(-1); $('bOpenNext').onclick = () => jumpOpen(1);
+$('help').onclick = () => toggleHelp(false);
+fillKeymap($('helpKeys')); fillKeymap($('noteKeys'));
+render();
+</script>
+</body>
+</html>

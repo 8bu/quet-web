@@ -1,0 +1,3 @@
+DEV_ADMIN_BYPASS="1"
+ACCESS_TEAM_DOMAIN="your-team.cloudflareaccess.com"
+ACCESS_AUD=""

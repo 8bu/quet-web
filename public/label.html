@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>quet · labelling</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/label.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><a href="/" class="home" title="All projects">quet</a><span id="projName"></span></div>
+    <div class="prog">
+      <b id="progTxt" title="record position / records in the queue"></b>
+      <div class="bar"><i id="barDone"></i></div>
+      <span id="counts" class="counts"></span>
+      <span id="loadNote" class="loadnote" hidden></span>
+    </div>
+    <div class="topbtns">
+      <button id="bQueue" type="button" aria-expanded="false" aria-controls="drawer">Queue <kbd>\</kbd></button>
+      <button id="bUndo" type="button">↶ Undo <kbd>z</kbd></button>
+      <button id="bHelp" type="button">Keys <kbd>?</kbd></button>
+    </div>
+  </header>
+
+  <p id="fatal" class="fatal" role="alert" hidden></p>
+  <noscript><p class="fatal">quet needs JavaScript.</p></noscript>
+
+  <aside id="drawer" class="drawer" aria-label="Queue" aria-hidden="true">
+    <div class="drawer-head">
+      <b>Queue</b>
+      <span id="drawerCount" class="small"></span>
+      <button id="bDrawerClose" type="button" class="close" aria-label="Close the queue">close <kbd>\</kbd></button>
+    </div>
+    <div id="queueList" class="qlist"></div>
+  </aside>
+
+  <main id="stage" class="stage" hidden>
+    <section class="card">
+      <div class="meta"><span id="recMeta"></span><span id="savedChip" class="saved"></span></div>
+      <div id="text" class="hero" aria-label="Record text: click or drag words to mark a span"></div>
+
+      <div id="spans" class="spans"></div>
+      <div class="spantools">
+        <button id="bSelect" type="button">select with keys <kbd>x</kbd></button>
+        <button id="bNull" type="button"><span id="nullTxt">no target</span> <kbd>n</kbd></button>
+        <button id="bField" type="button" hidden>next field <kbd>tab</kbd></button>
+        <button id="bStatus" type="button" hidden>span status <kbd>c</kbd></button>
+        <button id="bSnap" type="button"><span id="snapTxt">snap: words</span> <kbd>m</kbd></button>
+      </div>
+      <div id="hint" class="hint"></div>
+
+      <div id="proposal" class="proposal" hidden></div>
+
+      <nav class="nav">
+        <button id="bPrev" type="button">‹ previous <kbd>k</kbd></button>
+        <button id="bNext" type="button">next <kbd>j</kbd> ›</button>
+        <button id="bOpenPrev" type="button">‹ unlabelled <kbd>[</kbd></button>
+        <button id="bOpenNext" type="button">next unlabelled <kbd>]</kbd> ›</button>
+      </nav>
+    </section>
+
+    <aside class="palette">
+      <h3>Type <span id="typeRange" class="range"></span></h3>
+      <div id="types"></div>
+      <h3>Save as</h3>
+      <div id="statuses"></div>
+      <div id="draft" class="draft"></div>
+      <p class="palette-tip"><kbd>esc</kbd> discards the draft · <kbd>?</kbd> lists every key</p>
+    </aside>
+  </main>
+
+  <div id="dragtip" class="dragtip" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="help" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="sheet">
+      <h2 id="helpTitle">Keyboard and mouse</h2>
+      <table id="helpKeys"></table>
+      <h3>Complete needs every target marked</h3>
+      <p><kbd>enter</kbd> (save as complete) is refused while a span that applies to the chosen type is still
+        unmarked. Click or drag the text to mark it, or press <kbd>n</kbd> if there is none.
+        <kbd>u</kbd> (uncertain) and <kbd>s</kbd> (skipped) are never blocked.</p>
+      <p class="small">This is a deliberate difference from the Quet terminal annotator, which would quietly save an
+        unmarked target as <code>null</code> — easy to do by accident when you forgot to mark it.</p>
+      <p class="small">Offsets are counted in Unicode characters (code points), so an emoji counts as one. The end is
+        exclusive: <code>"nước dùng" [22,31)</code> covers characters 22 to 30.</p>
+      <p class="small">Press <kbd>?</kbd> or <kbd>esc</kbd> to close.</p>
+    </div>
+  </div>
+
+  <script type="module" src="/js/label.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Quet admin</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='23' font-size='19' font-family='Georgia,serif' fill='%23ffffff' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/admin.css">
+  <script type="module" src="/js/admin.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Quet <span class="muted">admin</span></h1>
+    <div class="filter">
+      <label for="filter" class="sr-only">Filter projects and collaborators</label>
+      <input id="filter" type="search" placeholder="Filter projects &amp; collaborators" autocomplete="off" spellcheck="false" aria-keyshortcuts="/">
+      <kbd title="Press / to focus the filter">/</kbd>
+    </div>
+    <div class="who">
+      <span id="who" class="muted" aria-live="polite"></span>
+      <button type="button" id="refresh" title="Reload all data">Refresh</button>
+    </div>
+  </header>
+
+  <noscript><p class="notice error">The admin dashboard needs JavaScript.</p></noscript>
+
+  <div id="gate" class="gate" role="alert" hidden></div>
+
+  <div id="app" class="layout" hidden>
+    <main id="main" class="main">
+      <div id="secrets" class="secrets" aria-live="polite"></div>
+
+      <section aria-labelledby="projects-h">
+        <div class="section-head">
+          <h2 id="projects-h">Projects</h2>
+          <span id="projects-count" class="muted"></span>
+        </div>
+        <div id="projects-err" class="inline-err" role="alert"></div>
+        <div class="table-wrap">
+          <table id="projects-table">
+            <thead id="projects-head"></thead>
+            <tbody id="projects-body"></tbody>
+          </table>
+        </div>
+        <p class="hint muted">Projects are created and updated from the Quet CLI (<code>quet web push</code>).</p>
+      </section>
+
+      <section aria-labelledby="collabs-h">
+        <div class="section-head">
+          <h2 id="collabs-h">Collaborators</h2>
+          <span id="collabs-count" class="muted"></span>
+        </div>
+
+        <form id="new-collab" class="new-collab" autocomplete="off" novalidate>
+          <fieldset>
+            <legend>New collaborator</legend>
+            <label>Username
+              <input id="nc-username" name="username" type="text" required maxlength="32"
+                     pattern="^[a-z0-9][a-z0-9._-]{1,31}$" autocapitalize="none" autocorrect="off" spellcheck="false"
+                     aria-describedby="nc-help">
+            </label>
+            <label>Password <span class="muted">(optional)</span>
+              <input id="nc-password" name="password" type="password" autocomplete="new-password"
+                     placeholder="blank = generate" aria-describedby="nc-help">
+            </label>
+            <button type="submit" class="primary">Create</button>
+            <span id="nc-err" class="inline-err" role="alert"></span>
+            <p id="nc-help" class="hint muted">Username: 2&ndash;32 chars, lowercase letters, digits, <code>.</code> <code>_</code> <code>-</code>, starting with a letter or digit. Leave the password blank to have the server generate one.</p>
+          </fieldset>
+        </form>
+
+        <div id="collabs-err" class="inline-err" role="alert"></div>
+        <div class="table-wrap">
+          <table id="collabs-table">
+            <thead id="collabs-head"></thead>
+            <tbody id="collabs-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="keys muted">
+        <kbd>/</kbd> filter &middot; <kbd>j</kbd>/<kbd>k</kbd> next/previous row &middot; <kbd>enter</kbd> open &middot; <kbd>esc</kbd> close panel
+      </footer>
+    </main>
+
+    <aside id="detail" class="detail" aria-label="Details" hidden></aside>
+  </div>
+
+  <dialog id="confirm" class="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h3 id="confirm-title"></h3>
+      <div id="confirm-body"></div>
+      <div class="actions">
+        <button type="submit" value="cancel" id="confirm-cancel">Cancel</button>
+        <button type="submit" value="ok" id="confirm-ok" class="danger"></button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "quet-web",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "routes": [{ "pattern": "quet.8bu.dev", "custom_domain": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "quet-web",
+      "database_id": "88335097-1d2a-45ea-ac96-3b867fa7bb4d"
+    }
+  ],
+  "observability": { "enabled": true },
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "71zone.cloudflareaccess.com",
+    "ACCESS_AUD": "e21c77967bc9cf8b602604ca2765d523246c3978551ae38616747676193d8b"
+  }
+}
