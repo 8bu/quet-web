@@ -116,3 +116,54 @@ offsets hold through the browser, D1 and the CLI. The admin view reported `reade
 (2 complete)`.
 
 **Test data.** The owner deleted project `hello` and collaborator `reader` after the test.
+
+## Release
+
+`package.json` holds the only version number. Release Please changes it; do not edit it by hand.
+
+### How a release happens
+
+1. Merge changes to `main` with [conventional commit](https://www.conventionalcommits.org) titles:
+   `feat:` bumps the minor version, `fix:` bumps the patch version, and `feat!:` or a
+   `BREAKING CHANGE:` footer bumps the major version (while the version is below 1.0, a breaking
+   change bumps the minor version). Other types (`docs:`, `chore:`, `test:`) do not release.
+2. The `Release` workflow (`.github/workflows/release.yml`) opens or updates a release PR. The PR
+   bumps `package.json` and `package-lock.json` and writes `CHANGELOG.md`. The first release is
+   `0.1.0`.
+3. Merge the release PR. Release Please tags `vX.Y.Z` and creates the GitHub release.
+4. In the same run, the `Deploy` workflow (`.github/workflows/deploy.yml`) starts for that tag. It
+   runs the CI checks (`ci.yml`: typecheck, vitest, build), then applies D1 migrations
+   (`wrangler d1 migrations apply quet-web --remote`), then runs `wrangler deploy`.
+
+Pushes to `main` and pull requests also run `ci.yml` alone. To deploy without a release, open
+Actions → Deploy → Run workflow and enter a ref (default `main`). Every deploy job uses the
+`production` environment and one concurrency group, so two deploys never overlap.
+
+Release Please uses the default `GITHUB_TOKEN`. GitHub does not start other workflows from events
+that token creates, so the release PR does not run CI by itself. Close and reopen the PR to run CI
+on it. For the same reason, the deploy is called directly from the `Release` workflow and not from a
+`release: published` trigger.
+
+### Repository secrets
+
+Add one secret in Settings → Secrets and variables → Actions:
+
+| Secret | Value |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | API token from the steps below |
+
+The account ID is not secret. `deploy.yml` sets `CLOUDFLARE_ACCOUNT_ID` as a plain value
+(`d3fc0198c8197514b262b12e3c6639a4`). You can store the token on the `production` environment
+(Settings → Environments → production) to scope it to deploys.
+
+Also enable Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create
+and approve pull requests". Release Please needs it to open the release PR.
+
+### Create the Cloudflare API token
+
+1. Open Cloudflare dashboard → My Profile → API Tokens → Create Token.
+2. Pick the **Edit Cloudflare Workers** template.
+3. Add one more permission: Account → **D1** → **Edit**. Migrations need it.
+4. Under Account Resources, include account `71Z`. Under Zone Resources, include zone `8bu.dev`
+   (the template already sets this for the custom domain route).
+5. Create the token, copy it once, and save it as the `CLOUDFLARE_API_TOKEN` secret.

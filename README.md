@@ -40,7 +40,10 @@ npm run migrate:local
 npm run dev
 ```
 
-Run the checks with `npm run typecheck` and `npx vitest run`. Deploy with `npm run deploy`.
+Run the checks with `npm run typecheck` and `npx vitest run`.
+
+GitHub Actions runs the checks, versions each release, and deploys it. To deploy by hand, run
+`npm run deploy`. See [Release](docs/deploy.md#release) for the full flow.
 
 ## Docs
 
