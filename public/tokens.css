@@ -1,0 +1,57 @@
+/* Shared design tokens for every quet-web page. Mimics shadcn/ui (new-york, neutral base, v4 tokens) in plain CSS.
+   Theme: <html data-theme="light|dark"> forces a theme; no attribute follows the system (prefers-color-scheme).
+   public/theme-init.js sets the attribute before first paint; src/web/theme.ts renders the picker. */
+@font-face{font-family:"Geist";src:url(/fonts/Geist-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url(/fonts/GeistMono-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+:root{
+  color-scheme:light;
+  --radius:.625rem;
+  --background:oklch(1 0 0); --foreground:oklch(.145 0 0);
+  --card:oklch(1 0 0); --card-foreground:oklch(.145 0 0);
+  --popover:oklch(1 0 0);
+  --primary:oklch(.205 0 0); --primary-foreground:oklch(.985 0 0);
+  --secondary:oklch(.97 0 0); --muted:oklch(.97 0 0); --muted-foreground:oklch(.556 0 0);
+  --accent:oklch(.97 0 0); --accent-foreground:oklch(.205 0 0);
+  --destructive:oklch(.577 .245 27.325);
+  --border:oklch(.922 0 0); --input:oklch(.922 0 0); --ring:oklch(.708 0 0);
+  --chart-1:oklch(.646 .222 41.116); --chart-2:oklch(.6 .118 184.704);
+  --s0:var(--chart-1); --s1:var(--chart-2); --s2:oklch(.55 .17 255); --s3:oklch(.58 .2 305); --s4:oklch(.6 .21 5);
+  --s0-ink:oklch(.47 .16 41); --s1-ink:oklch(.43 .09 185); --s2-ink:oklch(.43 .15 255); --s3-ink:oklch(.42 .16 305); --s4-ink:oklch(.46 .17 5);
+  --shadow-xs:0 1px 2px 0 rgb(0 0 0 / .05);
+  --shadow-sm:0 1px 3px 0 rgb(0 0 0 / .1),0 1px 2px -1px rgb(0 0 0 / .1);
+  --shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1),0 4px 6px -4px rgb(0 0 0 / .1);
+  --r-sm:calc(var(--radius) - 4px); --r-md:calc(var(--radius) - 2px); --r-lg:var(--radius); --r-xl:calc(var(--radius) + 4px);
+  --active:var(--s0);
+  --sans:"Geist",ui-sans-serif,system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace;
+}
+:root[data-theme=dark]{
+  color-scheme:dark;
+  --background:oklch(.145 0 0); --foreground:oklch(.985 0 0);
+  --card:oklch(.205 0 0); --card-foreground:oklch(.985 0 0); --popover:oklch(.205 0 0);
+  --primary:oklch(.922 0 0); --primary-foreground:oklch(.205 0 0);
+  --secondary:oklch(.269 0 0); --muted:oklch(.269 0 0); --muted-foreground:oklch(.708 0 0);
+  --accent:oklch(.269 0 0); --accent-foreground:oklch(.985 0 0);
+  --destructive:oklch(.704 .191 22.216);
+  --border:oklch(1 0 0 / 10%); --input:oklch(1 0 0 / 15%); --ring:oklch(.556 0 0);
+  --chart-1:oklch(.705 .19 45); --chart-2:oklch(.696 .17 162.48); --s2:oklch(.7 .15 255); --s3:oklch(.7 .17 305); --s4:oklch(.72 .17 5);
+  --s0-ink:oklch(.82 .12 50); --s1-ink:oklch(.84 .11 165); --s2-ink:oklch(.82 .1 255); --s3-ink:oklch(.84 .1 305); --s4-ink:oklch(.84 .1 5);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  color-scheme:dark;
+  --background:oklch(.145 0 0); --foreground:oklch(.985 0 0);
+  --card:oklch(.205 0 0); --card-foreground:oklch(.985 0 0); --popover:oklch(.205 0 0);
+  --primary:oklch(.922 0 0); --primary-foreground:oklch(.205 0 0);
+  --secondary:oklch(.269 0 0); --muted:oklch(.269 0 0); --muted-foreground:oklch(.708 0 0);
+  --accent:oklch(.269 0 0); --accent-foreground:oklch(.985 0 0);
+  --destructive:oklch(.704 .191 22.216);
+  --border:oklch(1 0 0 / 10%); --input:oklch(1 0 0 / 15%); --ring:oklch(.556 0 0);
+  --chart-1:oklch(.705 .19 45); --chart-2:oklch(.696 .17 162.48); --s2:oklch(.7 .15 255); --s3:oklch(.7 .17 305); --s4:oklch(.72 .17 5);
+  --s0-ink:oklch(.82 .12 50); --s1-ink:oklch(.84 .11 165); --s2-ink:oklch(.82 .1 255); --s3-ink:oklch(.84 .1 305); --s4-ink:oklch(.84 .1 5);
+}}
+
+/* Theme picker (shadcn ToggleGroup, outline, icon size) */
+.theme-picker{display:inline-flex;align-items:center;height:32px;padding:2px;gap:2px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--background);box-shadow:var(--shadow-xs)}
+.theme-picker button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:calc(var(--r-md) - 2px);background:transparent;color:var(--muted-foreground);cursor:pointer}
+.theme-picker button:hover{background:var(--muted);color:var(--foreground)}
+.theme-picker button[aria-checked=true]{background:var(--accent);color:var(--accent-foreground);box-shadow:var(--shadow-xs)}
+.theme-picker .ic{width:15px;height:15px}
