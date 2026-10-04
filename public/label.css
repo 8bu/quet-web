@@ -114,8 +114,31 @@ main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 
 .imsg{font-weight:500;color:var(--destructive)}
 .imsg.info{color:var(--foreground)}
 
+/* proposal (model pre-label): dashed + sparkle mean "suggested, not yours yet" */
+.prop{flex:none;display:flex;flex-direction:column;gap:8px;padding:12px 16px;border:1px dashed color-mix(in oklab,var(--muted-foreground) 55%,var(--border));border-radius:var(--r-xl);background:color-mix(in oklab,var(--muted) 55%,var(--card))}
+.ptop{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;min-width:0}
+.pbadge,.tbadge{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border:1px dashed var(--muted-foreground);border-radius:999px;color:var(--muted-foreground);font-size:12px;font-weight:500;line-height:18px;white-space:nowrap}
+.pbadge .ic,.tbadge .ic{width:12px;height:12px}
+.pty{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.pst{padding:1px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:500;line-height:18px}
+.pconf{font:12px var(--mono);color:var(--muted-foreground)}
+.pok{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.pok .ic{width:12px;height:12px}
+.pbad{font-size:13px;color:var(--destructive)}
+.pact{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn.sm{height:32px;padding:0 10px;font-size:13px}
+.btn.sm.primary{padding:0 10px}
+.pspans{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:14px}
+.ps{--c:var(--s0);display:inline-flex;align-items:baseline;gap:6px;min-width:0;max-width:100%;color:var(--muted-foreground)}
+.ps i{align-self:center;width:8px;height:8px;border-radius:999px;background:var(--c);flex:none}
+.ps b{font-weight:600;color:var(--foreground);overflow-wrap:anywhere}
+.ps em{font-style:normal}
+.ps small{font-size:12px}
+.pmeta{font-size:13px;color:var(--muted-foreground);overflow-wrap:anywhere}
+.pp{background:color-mix(in oklab,var(--c) 7%,transparent);border-bottom-style:dashed;border-bottom-color:color-mix(in oklab,var(--c) 75%,transparent)}
+
 /* type picker: ToggleGroup outline, 4x2 */
-.types{flex:none;display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:8px;max-height:40vh;overflow:auto}
+.types{flex:none;display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:8px;max-height:40vh;overflow:auto;padding-top:8px;margin-top:-8px}
 .type{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;min-height:clamp(64px,8.6vh,78px);text-align:left;background:var(--background);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-xs);color:var(--foreground)}
 .type:hover{background:var(--accent)}
 .type .kb{flex:none;margin-top:1px}
@@ -125,6 +148,11 @@ main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 
 .type[aria-pressed=true]{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
 .type[aria-pressed=true] .tg{color:color-mix(in oklab,var(--primary-foreground) 70%,transparent)}
 .type[aria-pressed=true] .kb{background:color-mix(in oklab,var(--primary-foreground) 18%,transparent);color:var(--primary-foreground)}
+.type{position:relative}
+.type.proposed{border-style:dashed;border-color:color-mix(in oklab,var(--muted-foreground) 80%,var(--border))}
+.type.proposed[aria-pressed=true]{border-style:solid}
+.tbadge{position:absolute;top:-9px;right:8px;padding:0 6px;background:var(--background);font-size:11px;line-height:16px}
+.tbadge .ic{width:11px;height:11px}
 
 /* footer */
 footer{flex:none;position:relative;border-top:1px solid var(--border);background:var(--background);padding:12px 24px calc(12px + env(safe-area-inset-bottom))}
@@ -220,6 +248,11 @@ footer{flex:none;position:relative;border-top:1px solid var(--border);background
   .snote{flex-basis:100%;order:3;font-size:12px}
   .bmsg{left:12px;right:12px;width:auto;flex-wrap:wrap}
   .bmsg button{height:44px}
+  .prop{padding:10px 12px;gap:6px}
+  .pact{flex:1 0 100%;margin-left:0}
+  .pact .btn{flex:1;height:44px;padding:0 6px;min-width:0}
+  .tbadge{right:6px;padding:0 3px}
+  .tbt{display:none}
 }
 @media (max-width:480px){ .count .cl{display:none} }
 @media (max-height:760px) and (min-width:641px){

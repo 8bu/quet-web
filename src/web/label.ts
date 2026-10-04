@@ -2,7 +2,7 @@
 // Offsets are Unicode code points (end exclusive); span text always comes from the shared cpSlice.
 
 import type { Label, Schema, Span, SpanField } from '../shared/schema';
-import { SchemaError, cpSlice, isNullFor, normalizeLabel, parseSchema } from '../shared/schema';
+import { SchemaError, cpSlice, isNullFor, normalizeLabel, parseSchema, validateProposal } from '../shared/schema';
 import { mountThemePicker } from './theme';
 
 // ---------------------------------------------------------------------------
@@ -13,6 +13,7 @@ interface Project {
   slug: string;
   name: string;
   schema: unknown;
+  show_proposals: boolean;
   items: number;
 }
 
@@ -21,11 +22,21 @@ interface ItemRow {
   position: number;
   text: string;
   label: Label | null;
+  proposal?: unknown;
 }
 
 interface ItemsPage {
   items: ItemRow[];
   total: number;
+}
+
+/** A model proposal (pre-label) read once per record. `error` set = it fails validation and cannot be used. */
+interface PropInfo {
+  error: string | null;
+  draft: Draft | null;
+  status: string;
+  conf: number | null;
+  reason: string;
 }
 
 interface Piece { s: number; e: number; tok: number }
@@ -35,6 +46,8 @@ interface Rec {
   id: string;
   text: string;
   label: Label | null; // my saved label
+  proposal: unknown; // raw model proposal; used only when project.show_proposals
+  pi?: PropInfo | null; // cache for propInfo()
   tk: Tokens | null;
 }
 
@@ -73,6 +86,7 @@ const svg = (d: string): string =>
   `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICON_CHECK = svg('<path d="M20 6 9 17l-5-5"/>');
 const ICON_X = svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>');
+const ICON_SPARK = svg('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>');
 const ICON_ENTER = svg('<path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/>');
 
 const esc = (s: string): string =>
@@ -114,6 +128,7 @@ const $ = {
   bUndo: el<HTMLButtonElement>('bUndo'),
   bDisc: el<HTMLButtonElement>('bDisc'),
   bUnsure: el<HTMLButtonElement>('bUnsure'),
+  prop: el('prop'),
 };
 
 mountThemePicker(el('themePicker'));
@@ -300,6 +315,28 @@ function dkey(d: Draft): string {
 }
 const dirty = (i: number): boolean => dkey(getDraft(i)) !== dkey(baseline(i));
 
+// ---------------------------------------------------------------------------
+// Proposals (model pre-labels; shown only when the project turns show_proposals on)
+// ---------------------------------------------------------------------------
+
+/** Validate the record's proposal and turn it into a draft. Null when proposals are off or absent. */
+function propInfo(r: Rec): PropInfo | null {
+  if (!project.show_proposals || r.proposal == null) return null;
+  if (r.pi !== undefined) return r.pi;
+  const P = r.proposal;
+  const rec = typeof P === 'object' && !Array.isArray(P) ? (P as Record<string, unknown>) : {};
+  const conf = typeof rec.confidence === 'number' ? rec.confidence : null;
+  const reason = typeof rec.reason === 'string' ? rec.reason : '';
+  const v = validateProposal(S, r.text, P);
+  if (!v.ok) return (r.pi = { error: v.error, draft: null, status: '', conf, reason });
+  const status = String(rec.annotation_status);
+  const raw: Label = { id: r.id, annotation_status: status, type: typeof rec.type === 'string' ? rec.type : null };
+  for (const f of S.spans) raw[f.name] = rec[f.name] ?? null;
+  if (rec.span_status && typeof rec.span_status === 'object') raw.span_status = rec.span_status as Record<string, string>;
+  if (typeof rec.note === 'string' && rec.note.trim() !== '') raw.note = rec.note;
+  return (r.pi = { error: null, draft: draftFromLabel(normalizeLabel(S, raw)), status, conf, reason });
+}
+
 /** The wire label for `status` + `d`; normalizeLabel applies null_label_statuses and span-status defaults. */
 function buildLabel(r: Rec, status: string, d: Draft): Label {
   const clears = S.null_label_statuses.includes(status);
@@ -453,6 +490,8 @@ function renderNote(): void {
   const tk = tkOf(r);
   const cs = cursor ? [Math.min(cursor.a, cursor.b), Math.max(cursor.a, cursor.b)] : null;
   let h = '';
+  const pi = propInfo(r);
+  const pd = pi?.draft && dkey(pi.draft) !== dkey(d) ? pi.draft : null;
   for (const p of tk.pieces) {
     let cls = '';
     S.spans.forEach((f, k) => {
@@ -461,6 +500,14 @@ function renderNote(): void {
         cls = `hl s${k % 5}${f.statuses.length > 0 && (d.status[f.name] ?? f.statuses[0]) === UNSURE ? ' unsure' : ''}`;
       }
     });
+    let pp = '';
+    if (!cls && pd) {
+      S.spans.forEach((f, k) => {
+        const v = pd.spans[f.name];
+        if (v && applicable(pd, k) && p.s >= v.start && p.e <= v.end) pp = `pp s${k % 5}`;
+      });
+    }
+    cls ||= pp;
     const txt = esc(tk.cps.slice(p.s, p.e).join(''));
     if (p.tok < 0) h += cls ? `<span class="gap ${cls}">${txt}</span>` : txt;
     else {
@@ -492,15 +539,19 @@ function renderHint(): void {
       h = `<span>Click a word to set <b class="s${k % 5}">${esc(spanLabel(f))}</b>. Shift+click or drag takes several words.</span>`;
     }
   }
+  const pi = propInfo(curRec());
   const keys =
     '<div class="callout hk"><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>word</span> <kbd>Shift</kbd><span>extend</span> <kbd>Space</kbd><span>mark</span>' +
     (S.spans.length > 1 ? ' <kbd>Tab</kbd><span>switch slot</span>' : '') +
+    (pi && !pi.error ? ' <kbd>p</kbd><span>accept proposal</span> <kbd>P</kbd><span>load it</span>' : '') +
     '</div>';
   setHTML($.hint, 'hint', `<div class="callout msg${err ? ' err' : ''}">${icon}${h}</div>${keys}`);
 }
 
 function renderTypes(): void {
   const d = cur();
+  const pi = propInfo(curRec());
+  const pt = pi?.draft?.type ?? null;
   $.types.style.setProperty('--cols', String(Math.max(1, Math.min(4, S.types.length))));
   setHTML(
     $.types,
@@ -509,10 +560,51 @@ function renderTypes(): void {
       .map((t, i) => {
         const g = gloss(t.description);
         const key = i < 9 ? `<kbd class="kb">${i + 1}</kbd>` : '';
-        return `<button class="type" type="button" data-i="${i}" aria-pressed="${d.type === t.name}" aria-label="${i < 9 ? `${i + 1} ` : ''}${esc(t.name)}${g ? `: ${esc(g)}` : ''}">
-    ${key}<span><span class="tn">${esc(t.name)}</span>${g ? `<span class="tg">${esc(g)}</span>` : ''}</span></button>`;
+        const prop = pt === t.name;
+        const badge = prop ? `<span class="tbadge">${ICON_SPARK}<span class="tbt">Proposed</span></span>` : '';
+        return `<button class="type${prop ? ' proposed' : ''}" type="button" data-i="${i}" aria-pressed="${d.type === t.name}" aria-label="${i < 9 ? `${i + 1} ` : ''}${esc(t.name)}${g ? `: ${esc(g)}` : ''}${prop ? ' (proposed)' : ''}">
+    ${key}<span><span class="tn">${esc(t.name)}</span>${g ? `<span class="tg">${esc(g)}</span>` : ''}</span>${badge}</button>`;
       })
       .join('') + `<!--${d.type}-->`,
+  );
+}
+
+function renderProp(): void {
+  const r = curRec();
+  const pi = propInfo(r);
+  $.prop.hidden = !pi;
+  if (!pi) return;
+  const badge = `<span class="pbadge">${ICON_SPARK}Proposed</span>`;
+  if (!pi.draft) {
+    setHTML($.prop, 'prop', `<div class="ptop">${badge}<span class="pbad">\u26a0 invalid proposal: ${esc(pi.error ?? '')}</span></div>`);
+    return;
+  }
+  const pd = pi.draft;
+  const d = cur();
+  const matches = dkey(pd) === dkey(d);
+  const saved = matches && !dirty(idx) && r.label !== null;
+  let top = `${badge}<span class="pty">${pd.type ? esc(pd.type) : 'no type'}</span>`;
+  if (pi.status !== COMPLETE) top += `<span class="pst">${esc(statusLabel(pi.status).toLowerCase())}</span>`;
+  if (pi.conf !== null) top += `<span class="pconf" title="Model confidence">${pi.conf.toFixed(2)}</span>`;
+  const spans = S.spans
+    .map((f, k) => {
+      const v = pd.spans[f.name];
+      const st = pd.status[f.name] ?? f.statuses[0] ?? '';
+      const un = f.statuses.length > 0 && st !== f.statuses[0] && applicable(pd, k) ? ` <small>${esc(statusLabel(st).toLowerCase())}</small>` : '';
+      const val = v ? `<b>${esc(v.text)}</b>` : '<em>none</em>';
+      return `<span class="ps s${k % 5}"><i></i>${esc(spanLabel(f))} ${val}${un}</span>`;
+    })
+    .join('');
+  const meta = [pi.reason, pd.note].filter((x) => x !== '').join(' \u00b7 ');
+  const act =
+    `<div class="pact"><button class="btn sm primary" type="button" data-act="pAccept"${saved ? ' disabled' : ''}>Accept &amp; save <kbd class="kb">p</kbd></button>` +
+    `<button class="btn sm" type="button" data-act="pLoad"${matches ? ' disabled' : ''}>Load into form <kbd class="kb">P</kbd></button></div>`;
+  setHTML(
+    $.prop,
+    'prop',
+    `<div class="ptop">${top}${matches ? `<span class="pok">${ICON_CHECK}${saved ? 'saved' : 'in form'}</span>` : ''}${act}</div>` +
+      (spans ? `<div class="pspans">${spans}</div>` : '') +
+      (meta ? `<div class="pmeta">${esc(meta)}</div>` : ''),
   );
 }
 
@@ -572,6 +664,7 @@ function render(): void {
   renderNote();
   renderHint();
   renderTypes();
+  renderProp();
   renderNoteRow();
   renderBar();
 }
@@ -790,11 +883,11 @@ function focusNote(): void {
   }
 }
 
-async function commit(status: string): Promise<void> {
+async function commit(status: string, d: Draft = cur()): Promise<void> {
   if (busy) return;
   const i = idx;
   const r = curRec();
-  const label = buildLabel(r, status, cur());
+  const label = buildLabel(r, status, d);
   busy = true;
   try {
     const out = await api<{ label?: Label }>('PUT', `${base}/labels/${encodeURIComponent(r.id)}`, { label });
@@ -873,6 +966,34 @@ function skip(): void {
   if (busy) return;
   if (!skipStatus) return void bmsg('This schema has no skip status.');
   void commit(skipStatus);
+}
+
+/** Save the proposal as my label as it stands (old Quet `p`). */
+function acceptProposal(): void {
+  if (busy || !project.show_proposals) return;
+  const pi = propInfo(curRec());
+  if (!pi) return void bmsg('No proposal for this note.');
+  if (!pi.draft) return void bmsg(`Invalid proposal: ${pi.error}`);
+  void commit(pi.status, pi.draft);
+}
+
+/** Put the proposal into the form as an unsaved draft (old Quet `P`); the person still completes it. */
+function loadProposal(): void {
+  if (busy || !project.show_proposals) return;
+  const pi = propInfo(curRec());
+  if (!pi) return void bmsg('No proposal for this note.');
+  if (!pi.draft) return void bmsg(`Invalid proposal: ${pi.error}`);
+  if (dkey(pi.draft) === dkey(cur())) return;
+  mutate((d) => {
+    Object.assign(d, clone(pi.draft!));
+  });
+  const d = cur();
+  active = defaultActive(d);
+  cursor = null;
+  lastMark = null;
+  clearMsgs();
+  render();
+  bmsg('Proposal loaded into the form. Check it, then Complete.', 'info', undefined, 3500);
 }
 
 function discard(): void {
@@ -1012,6 +1133,12 @@ function buildHelp(): void {
     [k('Esc'), 'discard this note\u2019s draft (in the note field: back to keys)'],
     [k('?'), 'this panel'],
   ];
+  if (project.show_proposals) {
+    keys.push(
+      [k('p'), 'accept the proposal: save it as your label and go to the next note'],
+      [k('P'), 'load the proposal into the form; you still press Enter to complete'],
+    );
+  }
   let h = `<h3>Keys</h3><div class="kl">${keys.filter(([a]) => a !== '').map(([a, t]) => `<span>${a}</span><span>${t}</span>`).join('')}</div>`;
   h += '<p>Mouse: click a word to fill the lit slot, Shift+click or drag for several words. A click on a slot lights it; &times; clears it.</p>';
   h += `<h3>Types</h3><dl>${S.types.map((t, i) => `<dt>${i < 9 ? `${i + 1} ` : ''}${esc(t.name)}</dt><dd>${esc(t.description)}</dd>`).join('')}</dl>`;
@@ -1141,11 +1268,18 @@ function onAct(e: Event): void {
     case 'discard':
       discard();
       break;
+    case 'pAccept':
+      acceptProposal();
+      break;
+    case 'pLoad':
+      loadProposal();
+      break;
   }
   if (a !== 'pick') b.blur();
 }
 $.slots.addEventListener('click', onAct);
 $.foot.addEventListener('click', onAct);
+$.prop.addEventListener('click', onAct);
 $.helpBtn.addEventListener('click', () => setHelp(Boolean($.help.hidden)));
 el('helpClose').addEventListener('click', () => setHelp(false));
 
@@ -1156,7 +1290,7 @@ document.addEventListener('pointerdown', () => {
   touched = true;
 }, true);
 
-// ONLY: 1-9 (types), the slot keys, Tab, n, c, Enter, u, s, z, arrows, Space (word cursor), ?, Esc
+// ONLY: 1-9 (types), the slot keys, Tab, n, c, Enter, u, s, z, p / P (proposals), arrows, Space (word cursor), ?, Esc
 document.addEventListener('keydown', (e) => {
   if (!ready || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
   const k = e.key;
@@ -1181,6 +1315,11 @@ document.addEventListener('keydown', (e) => {
   if (/^[1-9]$/.test(k)) {
     e.preventDefault();
     if (!busy && Number(k) <= S.types.length) setType(Number(k) - 1);
+    return;
+  }
+  if (k === 'P' && project.show_proposals) {
+    e.preventDefault();
+    if (!e.repeat) loadProposal();
     return;
   }
   const lk = k.length === 1 ? k.toLowerCase() : k;
@@ -1214,6 +1353,11 @@ document.addEventListener('keydown', (e) => {
     case 's':
       e.preventDefault();
       if (!e.repeat) skip();
+      break;
+    case 'p':
+      if (!project.show_proposals) break;
+      e.preventDefault();
+      if (!e.repeat) acceptProposal();
       break;
     case 'z':
       e.preventDefault();
@@ -1275,7 +1419,7 @@ function appendItems(items: ItemRow[]): void {
   let firstUnlabelled = -1;
   for (const it of items) {
     if (byId.has(it.id)) continue; // never keep a record twice
-    const i = recs.push({ id: it.id, text: it.text, label: it.label ?? null, tk: null }) - 1;
+    const i = recs.push({ id: it.id, text: it.text, label: it.label ?? null, proposal: it.proposal ?? null, tk: null }) - 1;
     byId.add(it.id);
     if (firstUnlabelled < 0 && !it.label) firstUnlabelled = i;
   }
@@ -1317,6 +1461,7 @@ async function loadRest(): Promise<void> {
 
 function assignSlotKeys(): void {
   const used = new Set<string>(RESERVED_KEYS);
+  if (project.show_proposals) used.add('p');
   slotKeys = S.spans.map((f) => {
     for (const ch of f.name.toLowerCase()) {
       if (/^[a-z]$/.test(ch) && !used.has(ch)) {

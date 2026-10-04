@@ -5,9 +5,9 @@ Data formats follow Quet's `docs/annotating.md` exactly (queue, schema, labels, 
 
 ## Decisions (from the user)
 
-- Cloudflare **Worker** with **Workers static assets** + **D1**, custom domain `quet.8bu.dev`. No Pages.
+- Cloudflare **Worker** with **Workers static assets** + **D1**, custom domain from `QUET_DOMAIN` (set at deploy time, not in `wrangler.jsonc`). No Pages.
 - Admin auth = **Cloudflare Zero Trust Access**. One Access application covers
-  `quet.8bu.dev/admin` and `quet.8bu.dev/api/admin`. Policies: the admin's email (browser) and a
+  `<your-domain>/admin` and `<your-domain>/api/admin`. Policies: the admin's email (browser) and a
   **service token** (Quet CLI/TUI). The Worker also verifies the `Cf-Access-Jwt-Assertion` JWT on
   every `/admin*` and `/api/admin*` request (defense in depth). No app-level admin auth.
 - Collaborators: username/password created by the admin; they only see assigned projects.
@@ -120,8 +120,9 @@ Times are Unix milliseconds. Slugs: `^[a-z0-9][a-z0-9-]{0,62}$`. Usernames: `^[a
   `https://<ACCESS_TEAM_DOMAIN>/cdn-cgi/access/certs`, issuer `https://<ACCESS_TEAM_DOMAIN>`,
   audience `ACCESS_AUD`. Identity = `email` or service token `common_name`. Missing/invalid → 403
   JSON `{"error":"..."}`. Local dev only: `DEV_ADMIN_BYPASS=1` in `.dev.vars` (never in
-  `wrangler.jsonc`) opens the admin surface. There is deliberately no host check: with a
-  `custom_domain` route, `wrangler dev` rewrites both `request.url` and `Host` to `quet.8bu.dev`.
+  `wrangler.jsonc`) opens the admin surface. There is deliberately no host check. `wrangler.jsonc`
+  has no route (the deploy passes the domain with `--domain`), so `wrangler dev` keeps the local
+  host. A `custom_domain` route in the config would make it rewrite `request.url` and `Host`.
 - **Collaborator**: `POST /api/login` checks PBKDF2-SHA256 (100000 iterations, 16-byte salt,
   WebCrypto) and sets cookie `quet_session` (32 random bytes base64url; D1 stores SHA-256 hex of it),
   `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`. Disabled collaborators cannot log in and
@@ -224,11 +225,17 @@ schema; nothing is hard-coded. A type's chip gloss is the first clause of its de
   `span_status.<span>`; spans that are null for the type carry none.
 - Undo (`z`, through the API) reverts the last draft change or save: a save is undone with `PUT` of the
   previous label or `DELETE` if there was none.
-- Proposals are not shown on this screen.
+- **Proposals:** shown only when the project has `show_proposals` on and the item has a proposal.
+  A panel under the note shows the proposed type and spans (badge "Proposed", dashed style); the
+  proposed words get a dashed underline and the proposed type chip a dashed border with a
+  "Proposed" tag. A proposal that fails `validateProposal` shows "invalid" and has no actions.
+  `p` (button "Accept & save") saves the proposal as my label, with its status and note, and moves
+  on (as in the old screen). `P` (button "Load into form") only fills the draft; the person then
+  completes it as usual. Both are hidden and unbound when `show_proposals` is off.
 
 ## Quet CLI/TUI (implemented by the Quet agent)
 
-Env: `QUET_WEB_URL` (default `https://quet.8bu.dev`), `QUET_ACCESS_CLIENT_ID`,
+Env: `QUET_WEB_URL` (`https://<your-domain>`), `QUET_ACCESS_CLIENT_ID`,
 `QUET_ACCESS_CLIENT_SECRET` → sent as `CF-Access-Client-Id` / `CF-Access-Client-Secret` on every
 `/api/admin` call.
 
