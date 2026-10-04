@@ -18,6 +18,6 @@
   "observability": { "enabled": true },
   "vars": {
     "ACCESS_TEAM_DOMAIN": "71zone.cloudflareaccess.com",
-    "ACCESS_AUD": "e21c77967bc9cf8b602604ca2765d523246c3978551ae38616747676193d8b"
+    "ACCESS_AUD": "e21c779676bc9cfb8b602604ca27665d23246c3978551ae3861674767e7193b8"
   }
 }

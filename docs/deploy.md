@@ -35,8 +35,8 @@ Team domain `71zone.cloudflareaccess.com` (team name `71ZONE`) already existed.
 | Application | `quet-web admin`, self-hosted, session 24 h |
 | Destinations | `quet.8bu.dev/admin*`, `quet.8bu.dev/api/admin*` |
 | Policy 1 | `Admin email` — action **Allow** — selector **Emails** = `hvanlong@pm.me` |
-| Policy 2 | `Quet CLI service token` — action **Service Auth** — selector **Service Token** = `quet-cli` |
-| Application audience (AUD) tag | `e21c77967bc9cf8b602604ca2765d523246c3978551ae38616747676193d8b` |
+| Policy 2 | `Quet CLI service token` — action **Service Auth** — selector **Service Token** = `quet-cli-2` |
+| Application audience (AUD) tag | `e21c779676bc9cfb8b602604ca27665d23246c3978551ae3861674767e7193b8` (read from the live Access meta JWT, not from a screenshot) |
 
 The Worker also verifies the `Cf-Access-Jwt-Assertion` JWT itself (`jose`, issuer
 `https://71zone.cloudflareaccess.com`, audience = the AUD above), so a misconfigured policy is not the
@@ -49,21 +49,36 @@ Created in Zero Trust → Access controls → Service credentials → Service To
 
 | Item | Value |
 | --- | --- |
-| Name | `quet-cli` |
-| Client ID | `e4764b5d51790529d3b1b9ea98761ef2.access` |
-| Client secret | stored outside the repo in `~/.config/quet/web.env` (mode 0600), together with `QUET_WEB_URL=https://quet.8bu.dev` |
+| Name | `quet-cli-2` |
+| Client ID | `58b3828effe3b0e4192adb700c84f426.access` |
+| Client secret | outside the repo: `~/.config/quet/web.env` (mode 0600) and, for the CLI, `~/.config/quet/remotes.yaml` (mode 0600) |
 | Expiry | non-expiring |
 
 The Quet CLI/TUI sends `CF-Access-Client-Id` / `CF-Access-Client-Secret` on every `/api/admin` call.
+`quet web remote add origin https://quet.8bu.dev` plus `quet web login origin` (two lines on stdin)
+stores the pair; `QUET_WEB_URL`, `QUET_ACCESS_CLIENT_ID` and `QUET_ACCESS_CLIENT_SECRET` override it
+for one shell.
 
-> **Open issue (2026-10-04):** `curl -H 'CF-Access-Client-Id: …' -H 'CF-Access-Client-Secret: …'
-> https://quet.8bu.dev/api/admin/whoami` returns `302` to the Access login with
-> `service_token_status: false`, i.e. Access did not accept the pair. The client secret was
-> transcribed from the dashboard dialog, so it may be wrong. **Next step:** open
-> Service Tokens → `quet-cli` and re-read the secret with the copy button (clipboard), or rotate it,
-> update `~/.config/quet/web.env`, then re-run the check. Everything else in the chain is verified:
-> `/`, `/p/:slug` and `/js/*` return 200, `/admin` and `/api/admin/*` return 302 without credentials,
-> and the local bypass/dev flow is fully smoke-tested (54 checks).
+> **Resolved (2026-10-04).** Two independent faults kept the service token out, both from reading the
+> dashboard off screenshots:
+>
+> 1. `ACCESS_AUD` was mis-transcribed. Access let the token through but the Worker rejected the JWT it
+>    received with `403 {"error":"forbidden: valid Cloudflare Access credentials required"}`, because the
+>    audience it checked was not the application's. The live value is in the table above; it comes from
+>    decoding the `meta` JWT in an Access redirect, which is the only trustworthy source:
+>    `curl -sD - -o /dev/null https://quet.8bu.dev/api/admin/whoami | grep -i ^location` then base64-decode
+>    the `meta` payload and read `aud`.
+> 2. The service-token policy saved with a token whose secret no longer matched. Access answered `302`
+>    with `service_token_status: false`, and the token's page showed `Last Seen: Not Seen Yet`. A token's
+>    secret is shown once, at creation; `quet-cli` was recreated as `quet-cli-2` (the create dialog's copy
+>    button writes the whole `CF-Access-Client-Secret: <value>` header line to the clipboard, so strip the
+>    prefix). The old `quet-cli` token was then removed from the policy and deleted, so exactly one token
+>    exists for this application.
+>
+> Check: `curl -H "CF-Access-Client-Id: $QUET_ACCESS_CLIENT_ID" -H
+> "CF-Access-Client-Secret: $QUET_ACCESS_CLIENT_SECRET" https://quet.8bu.dev/api/admin/whoami` returns
+> `200 {"identity":"58b3828effe3b0e4192adb700c84f426.access"}`; with no credentials the same URL returns
+> `302` to the Access login.
 
 ## Verified behaviours
 
@@ -82,3 +97,25 @@ The Quet CLI/TUI sends `CF-Access-Client-Id` / `CF-Access-Client-Secret` on ever
   the admin dashboard (projects table, credential creation, collaborator status, project detail with
   progress and the `Show model proposals to collaborators` checkbox round-tripping to D1).
 - Production: `/`, `/p/x`, `/js/label.js` → 200; `/admin`, `/api/admin/whoami` → 302 to Access.
+
+## Production end-to-end (2026-10-04)
+
+The whole loop was run against `quet.8bu.dev`, not just local: `quet web push` published the multi-span
+example as project `hello` (5 items, 2 span fields), the admin API created collaborator `reader` with a
+generated password and assigned it, a real browser signed in at `/`, opened `/p/hello` and labelled two
+records (type key `1`, drag-selected spans, `Enter` to save), and `quet web pull --project hello --user
+reader` returned exactly:
+
+```jsonl
+{"id":"ms-001","annotation_status":"complete","type":"expense","target":{"text":"Vinamilk","start":10,"end":18},"value":{"text":"500k","start":23,"end":27},"span_status":{"value":"complete"}}
+{"id":"ms-002","annotation_status":"complete","type":"expense","target":{"text":"mẹ","start":21,"end":23},"value":{"text":"2tr","start":13,"end":16},"span_status":{"value":"complete"}}
+```
+
+Both spans of both records slice the queue text correctly (`text[start:end] == text`), so code-point
+offsets hold through the browser, D1 and the CLI. The admin view reported `reader: 2 labelled
+(2 complete)`.
+
+**Leftover test data.** Project `hello` and collaborator `reader` (`reader` / `dXkUSC7dxwe8M9pc`) still
+exist in production as a clickable demo. Delete the project from the dashboard (or
+`DELETE /api/admin/projects/hello` with the service token) and the collaborator from
+`/api/admin/collaborators/reader`; both cascade their labels.

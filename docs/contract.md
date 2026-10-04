@@ -209,6 +209,11 @@ The collaborator screen at `/p/:slug` is **prototype A (focus card) plus a colla
   `Proposal — not accepted` block; `p` accepts (a normal, undoable save) and `P` loads the values into
   the draft. An invalid proposal refuses `p` with the reason.
 - Light theme, 36px serif record text, one highlighted span per field.
+- The hint line guides, it does not report: it names the **first unmarked** field ("mark the value…"),
+  while the active field is the highlighted field row (`tab`/`shift+tab` move it and a toast names it).
+  A mouse drag always writes to the **active** field, so dragging the value's text while `Target` is
+  active overwrites the target's span. That is intended, and it is the one place where the hint and the
+  highlighted row can point at different fields; marking a span auto-advances to the next unmarked field.
 
 ## Quet CLI/TUI (implemented by the Quet agent)
 
