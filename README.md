@@ -2,8 +2,9 @@
 
 quet-web is the web companion of [Quet](https://github.com/8bu/quet), the terminal labelling tool (quet-tui).
 Outside collaborators use it to label text in a browser. They do not need to install Quet.
-
 It runs on a Cloudflare Worker with a D1 database at `quet.8bu.dev`.
+
+![Labelling demo](docs/media/labeller-demo.gif)
 
 ## How it works
 
@@ -23,6 +24,12 @@ It runs on a Cloudflare Worker with a D1 database at `quet.8bu.dev`.
 - Click a word to mark a span. Shift+click or drag marks several words.
 - Number keys pick the type. Enter saves and opens the next note.
 - Unsure labels and unsure spans need a note.
+
+| Unsure label with a note (dark mode) | Phone |
+| --- | --- |
+| ![Unsure label with a note](docs/media/labeller-unsure-dark.png) | <img src="docs/media/labeller-phone.png" alt="Phone layout" width="260"> |
+
+The demo is also a video: [docs/media/labeller-demo.mp4](docs/media/labeller-demo.mp4).
 
 ## Development
 
