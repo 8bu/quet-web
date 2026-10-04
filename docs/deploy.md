@@ -144,11 +144,11 @@ offsets hold through the browser, D1 and the CLI. The admin view reported `reade
    change bumps the minor version). Other types (`docs:`, `chore:`, `test:`) do not release.
 2. The `Release` workflow (`.github/workflows/release.yml`) opens or updates a release PR. The PR
    bumps `package.json` and `package-lock.json` and writes `CHANGELOG.md`.
-3. Merge the release PR. Release Please tags `vX.Y.Z` and creates the GitHub release.
+3. Merge the release PR. Release Please tags `quet-web-vX.Y.Z` and creates the GitHub release.
 4. Deploy by hand from the tag (CI does not deploy):
 
    ```sh
-   git pull --tags && git checkout vX.Y.Z
+   git pull --tags && git checkout quet-web-vX.Y.Z
    npx wrangler d1 migrations apply quet-web --remote   # only if there are new migrations
    npm run deploy                                       # needs QUET_DOMAIN, see "Custom domain"
    ```
