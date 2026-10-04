@@ -115,7 +115,4 @@ Both spans of both records slice the queue text correctly (`text[start:end] == t
 offsets hold through the browser, D1 and the CLI. The admin view reported `reader: 2 labelled
 (2 complete)`.
 
-**Leftover test data.** Project `hello` and collaborator `reader` (`reader` / `dXkUSC7dxwe8M9pc`) still
-exist in production as a clickable demo. Delete the project from the dashboard (or
-`DELETE /api/admin/projects/hello` with the service token) and the collaborator from
-`/api/admin/collaborators/reader`; both cascade their labels.
+**Test data.** The owner deleted project `hello` and collaborator `reader` after the test.

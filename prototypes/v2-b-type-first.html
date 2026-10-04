@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quet labeller v2 · B · type first (prototype)</title>
+<style>
+:root{
+  --bg:#f6f6f3; --surf:#fff; --ink:#1b2230; --muted:#586073; --line:#d6d9e0; --line2:#e8eaef; --hover:#eef0f4;
+  --accent:#1d4ed8; --accent-h:#1a43b8;
+  --t:#6a35b0; --t-tint:#ece3f9; --t-ink:#4b2285;
+  --v:#0f766e; --v-tint:#d5f0ec; --v-ink:#0a4f49;
+  --err:#b3261e; --err-bg:#fdecea; --ok:#17653a; --ok-bg:#e2f3e8; --warn-bg:#fff1c2; --warn-ink:#5a4200;
+  --hdr:52px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{
+  font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--bg);color:var(--ink);overflow:hidden;
+  display:grid;grid-template-rows:var(--hdr) minmax(0,1fr) auto;height:100vh;height:100dvh;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+kbd{
+  font:600 11.5px/1 ui-monospace,Menlo,Consolas,monospace;display:inline-block;min-width:20px;text-align:center;
+  padding:3px 5px;border:1px solid #b9c0cd;border-bottom-width:2px;border-radius:5px;background:#f3f4f7;color:#2f3748;
+}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:18px;padding:0 24px;background:var(--surf);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.brand b{font-size:17px;letter-spacing:.01em}
+.brand span{color:var(--muted);font-size:13px}
+.prog{flex:1;min-width:0}
+.segs{display:flex;gap:4px}
+.seg{flex:1;height:14px;padding:0;border:0;background:transparent;position:relative}
+.seg::before{content:"";position:absolute;left:0;right:0;top:3px;height:8px;border-radius:4px;background:#dfe2e9}
+.seg.sc::before{background:#1b2230}
+.seg.su::before{background:#7b8498}
+.seg.ss::before{background:#fff;border:2px solid #9aa2b4}
+.seg.dr::before{background:#fff;border:2px solid #1b2230}
+.seg.cur{outline:0}
+.seg.cur::after{content:"";position:absolute;left:-2px;right:-2px;top:0;height:14px;border:2px solid var(--accent);border-radius:7px}
+.count{font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.count b{font-size:17px}
+.count small{color:var(--muted);margin-left:8px;font-size:12.5px}
+.hbtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:#fff;font-weight:700;font-size:16px}
+.hbtn:hover{background:var(--hover)}
+
+/* ---------- main ---------- */
+main{min-height:0;overflow:auto;padding:14px 24px 8px}
+.wrap{max-width:1320px;height:100%;min-height:min-content;margin:0 auto;display:flex;flex-direction:column}
+.types{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;border-radius:12px}
+.types.needs{outline:3px solid var(--err);outline-offset:3px}
+.chip{
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;min-height:76px;
+  padding:11px 13px;border:1px solid var(--line);background:var(--surf);border-radius:10px;
+}
+.chip:hover{background:var(--hover);border-color:#b9c0cd}
+.chip .top1{display:flex;align-items:center;gap:7px;max-width:100%}
+.chip .num{
+  flex:none;width:21px;height:21px;border-radius:6px;background:#eceff4;border:1px solid #c9ced9;
+  font:700 12px/19px system-ui,sans-serif;text-align:center;color:#2f3748
+}
+.chip .cname{font-weight:650;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .gloss{font-size:12.5px;line-height:1.3;color:var(--muted)}
+.chip[aria-checked="true"]{background:#1b2230;border-color:#1b2230;color:#fff}
+.chip[aria-checked="true"] .gloss{color:#d4dae6}
+.chip[aria-checked="true"] .num{background:#fff;color:#1b2230;border-color:#fff}
+
+.stage{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:8px 0}
+.noteblock{width:100%;text-align:center}
+.note{
+  font-size:clamp(34px,6.2vh,58px);line-height:1.5;font-weight:500;letter-spacing:.005em;
+  user-select:none;-webkit-user-select:none;touch-action:none;padding:6px 0 0
+}
+.tok{position:relative;cursor:pointer;padding:0 .14em;margin:0 -.14em;border-radius:.2em}
+.tok:hover{background:#e6e9f0}
+.m-target{background:var(--t-tint)!important;box-shadow:inset 0 -4px 0 var(--t)}
+.m-value{background:var(--v-tint)!important;box-shadow:inset 0 -4px 0 var(--v)}
+.pv-target{background:var(--t-tint)!important;box-shadow:inset 0 -4px 0 var(--t)}
+.pv-value{background:var(--v-tint)!important;box-shadow:inset 0 -4px 0 var(--v)}
+.tok.m-target,.tok.m-value{border-radius:0}
+.tok.m-target:not(.sl),.tok.m-value:not(.sl){margin-right:0;padding-right:0}
+.tok.m-target:not(.sf),.tok.m-value:not(.sf){margin-left:0;padding-left:0}
+.slot.need.active{border-color:var(--err);box-shadow:0 0 0 3px rgba(179,38,30,.2)}
+.tok.sf{border-top-left-radius:.2em;border-bottom-left-radius:.2em}
+.tok.sl{border-top-right-radius:.2em;border-bottom-right-radius:.2em}
+.tok.sl[data-tag]::after{
+  content:attr(data-tag);position:absolute;top:-.5em;right:-.2em;font:700 11px/16px system-ui,sans-serif;letter-spacing:.03em;
+  color:#fff;padding:0 5px;border-radius:5px;pointer-events:none
+}
+.tok.sl.m-target::after{background:var(--t)}
+.tok.sl.m-value::after{background:var(--v)}
+.tok.cur{outline:2px solid var(--ink);outline-offset:2px}
+.gap.m-target,.gap.m-value{margin:0 -1px;padding:0 1px}
+.gap.m-target{background:var(--t-tint);box-shadow:inset 0 -4px 0 var(--t)}
+.gap.m-value{background:var(--v-tint);box-shadow:inset 0 -4px 0 var(--v)}
+.keyhint{margin-top:2px;font-size:12.5px;color:var(--muted);min-height:20px}
+.touchhint{display:none}
+
+.slots{width:min(920px,100%);display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.slot{
+  display:grid;grid-template-columns:20px 250px minmax(0,1fr) auto 150px 38px;align-items:center;gap:14px;
+  min-height:64px;padding:8px 12px 8px 16px;background:var(--surf);border:2px solid var(--line);border-radius:12px;cursor:pointer;text-align:left
+}
+.slot:hover{border-color:#b3bac8}
+.sw{width:20px;height:20px;border-radius:6px}
+.slot.target .sw{background:var(--t)} .slot.value .sw{background:var(--v)}
+.sname{display:flex;flex-direction:column;gap:1px;min-width:0}
+.sname .l1{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.sname .l2{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sval{font-size:20px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unmarked{font-style:italic;font-weight:500;color:var(--muted);font-size:17px}
+.nonebtn{margin-left:10px;height:30px;padding:0 10px;border:1px solid #b9c0cd;border-radius:8px;background:#fff;font-size:13px;font-weight:600;vertical-align:middle;color:var(--ink)}
+.nonebtn:hover{background:var(--hover);border-color:#6f7890}
+.nonebtn kbd{margin-left:5px;padding:2px 4px}
+.unmarked.need{color:var(--err);font-weight:700}
+.none{color:var(--muted);font-weight:500;font-size:17px}
+.meta{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap}
+.slot.active .meta.pick{font:600 12.5px system-ui,sans-serif}
+.slot.target.active{border-color:var(--t);background:var(--t-tint);box-shadow:0 0 0 3px rgba(106,53,176,.22)}
+.slot.value.active{border-color:var(--v);background:var(--v-tint);box-shadow:0 0 0 3px rgba(15,118,110,.22)}
+.slot.target.active .l1,.slot.target.active .meta{color:var(--t-ink)}
+.slot.value.active .l1,.slot.value.active .meta{color:var(--v-ink)}
+.slot.target.active .sname .l2{color:#5a3c85} .slot.value.active .sname .l2{color:#2c615c}
+.slot.locked{background:#eceef2;border-style:dashed;cursor:not-allowed}
+.slot.locked .sval{color:#4c5466}
+.slot.need{border-color:var(--err)}
+.x{width:38px;height:38px;border-radius:50%;border:1px solid transparent;background:transparent;font-size:22px;line-height:1;color:var(--muted)}
+.x:hover{background:rgba(27,34,48,.1);color:var(--ink)}
+.xph{display:block;width:38px}
+.statcell{display:flex;justify-content:flex-end}
+.stat{display:inline-flex;align-items:center;gap:0;border:1px solid #b9c0cd;border-radius:9px;background:#fff;padding:2px;height:34px}
+.stat span.o{padding:4px 9px;border-radius:7px;font-size:13px;font-weight:600;color:var(--muted)}
+.stat span.on{background:#1b2230;color:#fff}
+.stat span.on.unsure{background:var(--warn-bg);color:var(--warn-ink);box-shadow:inset 0 0 0 1px #c9a21a}
+.stat kbd{margin:0 4px 0 6px}
+.stat:hover{border-color:#6f7890}
+
+.under{width:min(920px,100%);min-height:76px;margin-top:6px}
+.slotmsg{min-height:22px;font-size:13.5px;color:var(--muted)}
+.slotmsg.err{color:var(--err);font-weight:600}
+.notebox{margin-top:4px;visibility:hidden}
+.notebox.show{visibility:visible}
+.notebox label{display:block;font-size:12.5px;font-weight:650;margin-bottom:3px;color:var(--ink)}
+.notebox .row{display:flex;gap:10px;align-items:center}
+.notebox input{
+  flex:1;min-width:0;height:40px;padding:0 12px;border:2px solid #8b93a7;border-radius:10px;background:#fff;font:inherit;color:var(--ink)
+}
+.notebox input::placeholder{color:#6a7284}
+.notebox input:focus{border-color:var(--accent);outline:3px solid rgba(29,78,216,.25);outline-offset:0}
+.notebox.err input{border-color:var(--err)}
+.notebox .nh{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.notebox.err .nh{color:var(--err);font-weight:700}
+
+/* ---------- footer ---------- */
+.bar{
+  display:flex;align-items:center;gap:8px;padding:12px 24px calc(12px + env(safe-area-inset-bottom));
+  background:var(--surf);border-top:1px solid var(--line);position:relative;z-index:5
+}
+.status{flex:1;min-width:0;display:flex;align-items:center;gap:12px;margin-right:8px}
+.state{
+  flex:none;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;font-weight:700;font-size:14px;white-space:nowrap;
+  border:1.5px solid #b9c0cd;background:#f1f2f5;color:#3d4558
+}
+.state::before{content:"";width:9px;height:9px;border-radius:50%;border:2px solid currentColor}
+.state.ok{background:var(--ok-bg);border-color:#8fcca6;color:var(--ok)}
+.state.ok::before{background:currentColor}
+.state.edit{background:var(--warn-bg);border-color:#c9a21a;color:var(--warn-ink)}
+.state.edit::before{border-radius:2px;background:currentColor}
+.snote:empty{display:none}
+.snote{flex:0 1 150px;min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg{flex:1;min-width:0;font-size:13.5px;line-height:1.3;color:var(--muted)}
+.msg.err{color:var(--err);font-weight:650}
+.msg.ok{color:var(--ok);font-weight:600}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 14px;border-radius:10px;
+  border:1px solid #b9c0cd;background:#fff;font-weight:600;font-size:14.5px;white-space:nowrap
+}
+.btn:hover:not(:disabled){background:var(--hover);border-color:#8b93a7}
+.btn:disabled{color:#7b8498;background:#f1f2f5;border-color:var(--line);cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;padding:0 20px;font-size:15.5px}
+.btn.primary:hover:not(:disabled){background:var(--accent-h);border-color:var(--accent-h)}
+.btn.primary kbd{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.6);color:#fff}
+.btn[aria-pressed="true"]{background:var(--warn-bg);border-color:#c9a21a;color:var(--warn-ink)}
+.sep{width:1px;height:28px;background:var(--line);margin:0 4px}
+.btn.nav{width:46px;padding:0;font-size:18px}
+
+/* ---------- tip + help ---------- */
+#tip{
+  position:fixed;z-index:20;max-width:380px;padding:10px 12px;background:#1b2230;color:#fff;border-radius:9px;font-size:13px;line-height:1.45;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none
+}
+#tip b{display:block;margin-bottom:2px}
+#scrim{position:fixed;left:0;right:0;top:var(--hdr);bottom:0;background:rgba(27,34,48,.35);z-index:30}
+#help{
+  position:fixed;top:var(--hdr);right:0;bottom:0;width:min(560px,100%);background:#fff;z-index:31;border-left:1px solid var(--line);
+  display:flex;flex-direction:column
+}
+#help header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line)}
+#help h2{margin:0;font-size:17px}
+#help .body{overflow:auto;padding:14px 18px 24px}
+#help h3{margin:18px 0 6px;font-size:12.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+#help h3:first-child{margin-top:0}
+.krow{display:grid;grid-template-columns:128px 1fr;gap:10px;padding:5px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.krow .k{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-start;align-content:flex-start}
+.def{display:grid;grid-template-columns:24px 1fr;gap:4px 10px;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13.5px}
+.def .num{width:22px;height:22px;border-radius:6px;background:#eceff4;border:1px solid #c9ced9;text-align:center;font:700 12px/20px system-ui}
+.def b{font-size:14.5px}
+.def p{grid-column:2;margin:0;color:#343c4d}
+#help p.plain{font-size:13.5px;margin:4px 0;color:#343c4d}
+
+/* ---------- phone ---------- */
+@media (min-width:721px) and (max-width:1699px){
+  .types{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .chip{min-height:60px}
+}
+@media (max-height:800px) and (min-width:721px){
+  .chip{min-height:60px;padding:7px 10px}
+  main{padding-top:10px}
+  .under{min-height:70px}
+}
+@media (max-width:720px), (hover:none){
+  .kb{display:none!important}
+}
+@media (max-width:720px){
+  :root{--hdr:48px}
+  .top{padding:0 14px;gap:10px}
+  .brand span,.count small{display:none}
+  .count b{font-size:16px}
+  main{padding:10px 14px 6px}
+  .types{display:flex;overflow-x:auto;gap:8px;scroll-snap-type:x proximity;margin:0 -14px;padding:2px 14px 6px;-webkit-overflow-scrolling:touch;border-radius:0}
+  .types.needs{outline-offset:-3px}
+  .chip{flex:0 0 164px;scroll-snap-align:start;min-height:64px}
+  .chip .num{display:none}
+  .stage{padding:4px 0;justify-content:flex-start}
+  .noteblock{padding-top:6px}
+  .note{font-size:clamp(26px,7.4vw,32px);line-height:1.55;padding-top:10px}
+  .keyhint{display:none}
+  .touchhint{display:block;font-size:12.5px;color:var(--muted)}
+  .slots{margin-top:8px;gap:6px}
+  .slot{
+    grid-template-columns:18px minmax(0,1fr) auto 44px;grid-template-areas:"sw name stat x" "sw val val x";
+    column-gap:10px;row-gap:2px;min-height:62px;padding:6px 6px 6px 12px;align-items:center
+  }
+  .slot .sw{grid-area:sw;width:18px;height:18px}
+  .slot .sname{grid-area:name} .slot .sname .l2{display:none}
+  .slot .sval{grid-area:val;font-size:18px}
+  .slot .meta{display:none}
+  .slot .statcell{grid-area:stat;width:104px}
+  .slot .x,.slot .xph{grid-area:x;width:44px;height:44px}
+  .stat{height:44px}
+  .nonebtn{height:44px;padding:0 14px;font-size:14px;margin-left:8px}
+  .slot .sval{overflow:visible}
+  .hbtn{width:44px;height:44px}
+  .seg{height:44px}
+  .seg::before{top:18px}
+  .seg.cur::after{top:15px}
+  .stat span.o{padding:5px 8px}
+  .under{min-height:0;margin-top:4px}
+  .slotmsg{min-height:18px;font-size:13px}
+  .notebox{display:none;visibility:visible}
+  .notebox.show{display:block}
+  .notebox .nh{display:none}
+  .notebox.err .nh{display:block}
+  .notebox .row{flex-wrap:wrap}
+  .notebox input{height:44px;flex:1 1 100%}
+  .bar{
+    display:grid;grid-template-columns:repeat(12,1fr);gap:6px;padding:8px 12px calc(8px + env(safe-area-inset-bottom))
+  }
+  .status{grid-column:1/-1;margin:0;gap:8px;flex-wrap:wrap}
+  .state{padding:4px 10px;font-size:13px}
+  .snote{flex:1 1 0;font-size:12.5px}
+  .msg{flex:1 1 100%;font-size:12.5px;min-height:16px}
+  .sep{display:none}
+  .btn{height:44px;padding:0 6px;font-size:14px;min-width:0}
+  .btn.nav{width:auto}
+  #bPrev{grid-column:span 2} #bNext{grid-column:span 2;order:2}
+  #bComplete{grid-column:span 8;order:1;font-size:16px}
+  #bPrev{order:0}
+  #bDiscard,#bUndo,#bUnsure,#bSkip{grid-column:span 3;order:3}
+  #help{width:100%}
+}
+@media (prefers-reduced-motion:no-preference){
+  .slot,.chip,.btn{transition:background-color .12s,border-color .12s,box-shadow .12s}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>quet</b><span>human-value-01</span></div>
+  <div class="prog"><div class="segs" id="segs" role="progressbar" aria-label="Queue progress" aria-valuemin="1" aria-valuemax="12"></div></div>
+  <div class="count"><b id="pos">1</b> / <span id="tot">12</span><small id="savedCount"></small></div>
+  <button class="hbtn" id="helpBtn" aria-label="Help and key list (?)" title="Help and key list">?</button>
+</header>
+
+<main>
+ <div class="wrap">
+  <div class="types" id="types" role="radiogroup" aria-label="Transaction type"></div>
+
+  <div class="stage">
+   <div class="noteblock">
+     <div class="note" id="note" lang="vi" aria-label="Note text. Click a word to mark it."></div>
+     <div class="keyhint" id="keyhint"><kbd>↑</kbd> <kbd>↓</kbd> pick a word &nbsp;·&nbsp; <kbd>Shift</kbd>+<kbd>↑</kbd><kbd>↓</kbd> extend &nbsp;·&nbsp; <kbd>Space</kbd> mark it into the active slot</div>
+     <div class="touchhint">Tap a word, or drag across words for a longer span.</div>
+   </div>
+   <div class="slots" id="slots"></div>
+   <div class="under">
+     <div class="slotmsg" id="slotmsg" aria-live="polite"></div>
+     <div class="notebox" id="notebox">
+       <label for="noteIn">Note</label>
+       <div class="row">
+         <input id="noteIn" type="text" maxlength="200" placeholder="What is unclear?" autocomplete="off">
+         <span class="nh" id="noteHint"></span>
+       </div>
+     </div>
+   </div>
+  </div>
+ </div>
+</main>
+
+<footer class="bar" id="bar">
+  <div class="status">
+    <span class="state" id="state">Not saved</span>
+    <span class="snote" id="snote"></span>
+    <span class="msg" id="msg" aria-live="polite"></span>
+  </div>
+  <button class="btn nav" id="bPrev" aria-label="Previous note (left arrow key)" title="Previous note (←)">←</button>
+  <button class="btn nav" id="bNext" aria-label="Next note (right arrow key)" title="Next note (→)">→</button>
+  <span class="sep"></span>
+  <button class="btn" id="bDiscard" title="Discard the draft of this note">Discard <kbd class="kb">Esc</kbd></button>
+  <button class="btn" id="bUndo" title="Undo the last action">Undo <kbd class="kb">z</kbd></button>
+  <button class="btn" id="bUnsure" title="Save as uncertain, with a note">Unsure <kbd class="kb">u</kbd></button>
+  <button class="btn" id="bSkip" title="Skip: save with all nulls">Skip <kbd class="kb">s</kbd></button>
+  <button class="btn primary" id="bComplete" title="Save as complete and go to the next note">Complete <kbd class="kb">⏎</kbd></button>
+</footer>
+
+<div id="tip" role="tooltip" hidden></div>
+<div id="scrim" hidden></div>
+<aside id="help" role="dialog" aria-modal="true" aria-label="Help" hidden>
+  <header><h2>Help</h2><button class="btn" id="helpClose">Close <kbd class="kb">Esc</kbd></button></header>
+  <div class="body" id="helpBody"></div>
+</aside>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= data ================= */
+const RAW=[
+ ['baseline-01-37a5dafba00f','ve may bay vietjet tet 2tr9'],
+ ['baseline-01-c3f385126089','nhan tien freelance web 6tr'],
+ ['baseline-01-63a6a7bb054f','no tien hui thang nay 1tr'],
+ ['baseline-01-94bf7544d8b0','mua sách 215.000 fahasa'],
+ ['baseline-01-b60ff1da67c3','để dành tiền cưới 5tr'],
+ ['baseline-01-a74b152d7abb','Quang còn nợ mình 1tr'],
+ ['baseline-01-932842926220','khám răng 400.000'],
+ ['baseline-01-6bdae11c88c7','trả nốt tiền laptop 3tr'],
+ ['baseline-01-3a8d71af9433','bánh cuốn nóng 30k hôm qua'],
+ ['baseline-01-9874e9359de7','chuyển tiền ví sang ngân hàng 420k'],
+ ['baseline-01-c6f1f2cad163','phu cap an trua 730k'],
+ ['baseline-01-b65fb421eb37','chuyen vcb qua mb 5tr']
+];
+const TYPES=[
+ {key:'expense',gloss:'money I spent',def:'Money leaves the user with no expectation of principal repayment.'},
+ {key:'income',gloss:'money I received',def:'Money received as salary, freelance/client payment, gift, sale proceeds, rewards, or other ordinary incoming money that is neither borrowing, debt repayment, nor refund.'},
+ {key:'borrow',gloss:'I borrowed, now owe',def:'The user receives loan principal and now owes another party.'},
+ {key:'lend',gloss:'I lent, they owe me',def:'The user gives loan principal to another party and expects repayment.'},
+ {key:'repayment_in',gloss:'they paid back what they owed me',def:'Another party repays money they previously owed the user (needs evidence of a prior debt; a bare "Nam trả 500k" is uncertain).'},
+ {key:'repayment_out',gloss:'I paid back a debt / instalment',def:'The user repays money they previously owed another party, including payments on an existing financed balance or liability (installments, BNPL, credit-card balance).'},
+ {key:'transfer',gloss:'between my own accounts or savings',def:'Movement between the user\'s own accounts, wallets, cash holdings, or savings, including conversion into investment/store-of-value assets the user still owns (fund certificates, gold held as savings, foreign currency). No economic income or expense occurs. vi-VN heuristic: precious metals/gems bought by quantity or purity (chỉ, lượng, phân, g, carat, 9999, 24K) are transfer ("mua nhẫn PNJ nửa chỉ") unless the note states a use, gift, ceremony, or fashion purpose, which overrides ("mua nhẫn vàng 1 chỉ tặng vợ" -> expense). A returned refundable deposit is transfer ("chủ nhà trả cọc 5tr", "lấy lại tiền cọc 2tr"); paying a deposit is transfer only when the note establishes it stays refundable.'},
+ {key:'refund',gloss:'money returned for an earlier spend',def:'Money returned to the user as reversal, reimbursement, rebate, or spending-linked cashback of an earlier expense.'}
+];
+const SLOTS=['target','value'];
+const SPANDEF={
+ target:{name:'Target',key:'t',hint:'who the money went to or came from',nullFor:['transfer'],statuses:null,
+  desc:'Minimal explicit expression for the external financial counterparty: a named merchant/service/platform ("highlands", "shopee"), a person, or a kinship/role noun that is the only identifier (mẹ, khách, cty, chủ nhà, sếp), without a kinship/title prefix before a proper name (anh/chị/bé). Never items, dishes, activities, bill names ("cơm gà", "tiền nhà"), companions (với/cùng), beneficiaries (cho bé) or a payment app/bank used only as the channel. No counterparty named -> none (n). Several plausible counterparties -> mark the note unsure. Always none for transfer.'},
+ value:{name:'Value',key:'v',hint:'the amount, e.g. 50k, 1tr5, 80.000đ',nullFor:[],statuses:['complete','uncertain'],
+  desc:'The monetary amount: the minimal full amount expression, the number plus the unit, slang or currency marker attached to it ("50k", "1tr5", "2 triệu", "5 xị", "80.000đ", "100", "bốn triệu"). Exclude quantities, item counts, months/periods/ordinals, dates, times, percentages, identifiers, approximators (tầm, khoảng) and /tháng. Never normalise the text. The note states no amount -> none (n). Several amounts and none clearly the transaction amount -> set Value to unsure (c) and say why in the note.'}
+};
+const STATUS_DESC=[
+ ['complete','Type, target (or explicit null target) and value are confidently determined.'],
+ ['uncertain','The text does not establish the type, the target or the value. A note saying what is unclear is required.'],
+ ['skipped','Not a usable finance note, a valid finance note outside the transaction-event taxonomy, or not worth labelling. Type, target and value are all saved as null.']
+];
+
+/* ================= tokenisation ================= */
+const PUNCT=/^\p{P}$/u, WS=/^\s$/u;
+function tokenize(ch){
+  const toks=[],parts=[];let i=0;
+  while(i<ch.length){
+    if(WS.test(ch[i])){let j=i;while(j<ch.length&&WS.test(ch[j]))j++;parts.push({k:'sp',t:ch.slice(i,j).join('')});i=j;continue}
+    let j=i;while(j<ch.length&&!WS.test(ch[j]))j++;
+    let a=i,b=j;
+    while(a<b&&PUNCT.test(ch[a]))a++;
+    while(b>a&&PUNCT.test(ch[b-1]))b--;
+    if(a>i)parts.push({k:'p',t:ch.slice(i,a).join('')});
+    if(b>a){toks.push({s:a,e:b,t:ch.slice(a,b).join('')});parts.push({k:'t',n:toks.length-1})}
+    if(j>b)parts.push({k:'p',t:ch.slice(b,j).join('')});
+    i=j;
+  }
+  return {toks,parts};
+}
+const NOTES=RAW.map(([id,text])=>{
+  text=text.normalize('NFC');const chars=Array.from(text);
+  return Object.assign({id,text,chars},tokenize(chars));
+});
+const spanText=(n,sp)=>n.chars.slice(n.toks[sp.a].s,n.toks[sp.b].e).join('');
+const spanOff=(n,sp)=>[n.toks[sp.a].s,n.toks[sp.b].e];
+const overlaps=(x,y)=>!(x.b<y.a||y.b<x.a);
+
+/* ================= state ================= */
+const S={
+  i:0,
+  saved:{5:{status:'complete',type:'lend',target:{a:0,b:0},value:{a:4,b:4},valueStatus:'complete',note:''}},
+  drafts:{},active:'target',msg:null,slotMsg:null,need:null,undo:[],cursor:null,lastMark:null,
+  help:false,focusNote:false,noteErr:false
+};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const touch=()=>matchMedia('(max-width:720px), (hover:none)').matches;
+const T=(kb,tp)=>touch()?tp:kb;
+const emptyDraft=()=>({type:null,target:undefined,value:undefined,valueStatus:'complete',unsure:false,note:''});
+function baseline(i){
+  const r=S.saved[i];
+  if(!r)return emptyDraft();
+  return {type:r.type,target:r.target,value:r.value,valueStatus:r.valueStatus||'complete',unsure:r.status==='uncertain',note:r.note||''};
+}
+function cur(){
+  if(!S.drafts[S.i])S.drafts[S.i]=clone(baseline(S.i));
+  return S.drafts[S.i];
+}
+const eff=d=>({type:d.type,target:d.type==='transfer'?null:d.target,value:d.value,valueStatus:d.valueStatus||'complete',unsure:!!d.unsure,note:(d.note||'').trim()});
+const key=o=>JSON.stringify(o,(k,v)=>v===undefined?'__u':v);
+const isDirty=i=>S.drafts[i]?key(eff(S.drafts[i]))!==key(eff(baseline(i))):false;
+const applicable=(d,s)=>!(SPANDEF[s].nullFor.includes(d.type));
+const noteVisible=d=>d.unsure||d.valueStatus==='uncertain';
+function defaultActive(d){
+  return SLOTS.find(s=>applicable(d,s)&&d[s]===undefined)||(applicable(d,'target')?'target':'value');
+}
+function nextActive(d,from){
+  const other=from==='target'?'value':'target';
+  return applicable(d,other)&&d[other]===undefined?other:from;
+}
+const snap=()=>JSON.stringify({i:S.i,saved:S.saved,drafts:S.drafts});
+function act(fn){
+  S.msg=null;S.slotMsg=null;S.need=null;S.noteErr=false;
+  const b=snap();fn();const a=snap();
+  if(a!==b){S.undo.push(b);if(S.undo.length>100)S.undo.shift()}
+  render();
+}
+
+/* ================= actions ================= */
+function setType(k){
+  const d=cur(),prev=d.type;d.type=k;
+  if(k==='transfer'){
+    if(d.target)S.slotMsg={t:'Target cleared: a transfer has no counterparty.'};
+    d.target=undefined;
+    if(S.active==='target')S.active='value';
+  }else if(prev==='transfer'&&d.target===undefined){S.active='target'}
+}
+function pickSlot(slot){
+  const d=cur();
+  if(!applicable(d,slot)){S.slotMsg={t:SPANDEF[slot].name+' is none for '+d.type+': nothing to pick.'};return}
+  S.active=slot;
+}
+function markSlot(slot,a,b){
+  const d=cur(),n=NOTES[S.i];
+  if(!applicable(d,slot)){S.slotMsg={t:SPANDEF[slot].name+' is none for '+d.type+': nothing to mark.',err:1};return}
+  const other=slot==='target'?'value':'target',o=eff(d)[other];
+  if(o&&overlaps(o,{a,b})){
+    const same=o.a===a&&o.b===b;
+    S.slotMsg={err:1,t:same
+      ?SPANDEF[slot].name+' and '+SPANDEF[other].name+' cannot be the same words ("'+spanText(n,o)+'"). Pick other words or clear '+SPANDEF[other].name+' with ×.'
+      :SPANDEF[slot].name+' cannot overlap '+SPANDEF[other].name+' ("'+spanText(n,o)+'"). Pick other words or clear '+SPANDEF[other].name+' with ×.'};
+    return;
+  }
+  d[slot]={a,b};S.lastMark={i:S.i,slot,a,b};S.active=nextActive(d,slot);
+}
+function setNone(){
+  const d=cur(),s=S.active;
+  if(!applicable(d,s)){S.slotMsg={t:SPANDEF[s].name+' is already none for '+d.type+'.'};return}
+  d[s]=null;S.active=nextActive(d,s);
+}
+function clearSlot(s){cur()[s]=undefined;S.active=s}
+function toggleStatus(slot,clickDriven){
+  const d=cur();
+  if(!SPANDEF[slot].statuses){S.slotMsg={t:SPANDEF[slot].name+' has no sure / unsure setting.'};return}
+  if(!applicable(d,slot))return;
+  d.valueStatus=d.valueStatus==='uncertain'?'complete':'uncertain';
+  S.active=slot;
+  if(d.valueStatus==='uncertain')S.focusNote=true;
+}
+function go(delta){
+  const j=Math.max(0,Math.min(NOTES.length-1,S.i+delta));
+  if(j===S.i){S.msg={t:delta<0?'This is the first note.':'This is the last note.'};render();return}
+  S.i=j;S.msg=null;S.slotMsg=null;S.need=null;S.noteErr=false;S.cursor=null;S.lastMark=null;
+  S.active=defaultActive(cur());render();
+}
+function goTo(j){S.i=j;S.msg=null;S.slotMsg=null;S.need=null;S.noteErr=false;S.cursor=null;S.lastMark=null;S.active=defaultActive(cur());render()}
+function missing(d){
+  const e=eff(d),m=[];
+  if(!e.type)m.push('pick a type (1–8)');
+  for(const s of SLOTS)if(applicable(d,s)&&e[s]===undefined)m.push(SPANDEF[s].name+' is not marked');
+  return m;
+}
+function save(kind){
+  const d=cur(),e=eff(d),n=NOTES[S.i];let rec;
+  if(kind==='skipped'){
+    rec={status:'skipped',type:null,target:null,value:null,valueStatus:'complete',note:''};
+  }else{
+    if(kind==='complete'){
+      const m=missing(d);
+      if(m.length){
+        S.need={type:!e.type,slots:SLOTS.filter(s=>applicable(d,s)&&e[s]===undefined)};
+        const spans=S.need.slots.length;
+        S.msg={err:1,t:'Can\'t complete: '+m.join('; ')+'.'+(spans?T(' Click a word, or press n if the note has none.',' Tap a word, or tap none if the note has none.'):'')};
+        return;
+      }
+    }
+    if((kind==='uncertain'||d.valueStatus==='uncertain')&&!e.note){
+      S.noteErr=true;S.focusNote=true;S.msg={err:1,t:'Add a note: what is unclear?'};
+      return;
+    }
+    rec={status:kind,type:e.type,target:e.target===undefined?null:e.target,value:e.value===undefined?null:e.value,valueStatus:e.valueStatus,note:e.note};
+  }
+  S.saved[S.i]=rec;delete S.drafts[S.i];S.cursor=null;S.lastMark=null;
+  const label=rec.status==='complete'?'complete':rec.status;
+  const num=S.i+1;
+  if(S.i<NOTES.length-1){S.i++;S.msg={ok:1,t:'Saved note '+num+' as '+label+'. Now on note '+(S.i+1)+'. '+T('Undo with z.','Tap Undo to reverse it.')}}
+  else S.msg={ok:1,t:'Saved note '+num+' as '+label+'. That was the last note in the queue.'};
+  S.active=defaultActive(cur());
+  noteIn.blur();
+}
+function pressUnsure(){
+  const d=cur();
+  if(!d.unsure){act(()=>{d.unsure=true;S.focusNote=true})}
+  else act(()=>save('uncertain'));
+}
+function discard(){
+  if(!isDirty(S.i)&&!S.drafts[S.i]?.unsure&&!baseline(S.i).unsure&&key(eff(cur()))===key(eff(baseline(S.i)))){
+    act(()=>{S.msg={t:'Nothing to discard: no unsaved edits on this note.'}});return;
+  }
+  act(()=>{S.drafts[S.i]=clone(baseline(S.i));S.cursor=null;S.lastMark=null;S.active=defaultActive(S.drafts[S.i]);S.msg={t:'Draft discarded.'}});
+  noteIn.blur();
+}
+function undo(){
+  if(!S.undo.length){act(()=>{S.msg={t:'Nothing to undo.'}});return}
+  const o=JSON.parse(S.undo.pop());
+  S.i=o.i;S.saved=o.saved;S.drafts=o.drafts;S.cursor=null;S.lastMark=null;S.need=null;S.slotMsg=null;S.noteErr=false;
+  S.msg={t:'Undid the last action.'};S.active=defaultActive(cur());noteIn.blur();render();
+}
+function commitMark(a,b,shift){
+  const lo=Math.min(a,b),hi=Math.max(a,b);
+  act(()=>{
+    const d=cur();let slot=S.active,ra=lo,rb=hi;
+    if(shift){
+      const lm=S.lastMark;let base=null;
+      if(lm&&lm.i===S.i&&d[lm.slot]&&d[lm.slot].a===lm.a&&d[lm.slot].b===lm.b)base=lm;
+      else if(d[S.active])base={slot:S.active,a:d[S.active].a,b:d[S.active].b};
+      if(base){slot=base.slot;ra=Math.min(base.a,lo);rb=Math.max(base.b,hi)}
+    }
+    S.cursor=null;markSlot(slot,ra,rb);
+  });
+}
+function moveCursor(dir,shift){
+  const len=NOTES[S.i].toks.length;if(!len)return;let c=S.cursor;
+  if(!c){const x=dir>0?0:len-1;S.cursor={a:x,b:x}}
+  else if(shift){S.cursor=dir>0?{a:c.a,b:Math.min(len-1,c.b+1)}:{a:Math.max(0,c.a-1),b:c.b}}
+  else{const x=dir>0?Math.min(len-1,c.b+1):Math.max(0,c.a-1);S.cursor={a:x,b:x}}
+  render();
+}
+function markCursor(){
+  if(!S.cursor){act(()=>{S.slotMsg={t:'Pick a word first with ↑ ↓.'}});return}
+  const c=S.cursor;act(()=>markSlot(S.active,c.a,c.b));
+}
+
+/* ================= DOM ================= */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const typesEl=$('#types'),noteEl=$('#note'),slotsEl=$('#slots'),slotMsgEl=$('#slotmsg'),noteBox=$('#notebox'),noteIn=$('#noteIn'),noteHint=$('#noteHint');
+const stateEl=$('#state'),snoteEl=$('#snote'),msgEl=$('#msg'),segsEl=$('#segs'),tip=$('#tip');
+let drag=null,lastType=null;
+
+/* type chips */
+typesEl.innerHTML=TYPES.map((t,i)=>
+ `<button class="chip" role="radio" aria-checked="false" data-type="${t.key}" data-i="${i}" aria-keyshortcuts="${i+1}">
+   <span class="top1"><span class="num kb">${i+1}</span><span class="cname">${t.key}</span></span>
+   <span class="gloss">${esc(t.gloss)}</span></button>`).join('');
+typesEl.addEventListener('click',e=>{
+  const c=e.target.closest('.chip');if(!c)return;hideTip();act(()=>setType(c.dataset.type));
+});
+let tipTimer=null;
+function showTip(c){
+  const t=TYPES[+c.dataset.i];
+  tip.innerHTML='<b>'+(+c.dataset.i+1)+' · '+t.key+'</b>'+esc(t.def);
+  tip.hidden=false;
+  const r=c.getBoundingClientRect(),w=tip.offsetWidth;
+  tip.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left))+'px';
+  const below=r.bottom+6;
+  tip.style.top=(below+tip.offsetHeight>innerHeight-8?Math.max(8,r.top-tip.offsetHeight-6):below)+'px';
+}
+function hideTip(){clearTimeout(tipTimer);tip.hidden=true}
+typesEl.addEventListener('pointerover',e=>{
+  const c=e.target.closest('.chip');if(!c||e.pointerType!=='mouse')return;
+  clearTimeout(tipTimer);tipTimer=setTimeout(()=>showTip(c),300);
+});
+typesEl.addEventListener('pointerout',e=>{if(e.target.closest('.chip'))hideTip()});
+typesEl.addEventListener('focusin',e=>{const c=e.target.closest('.chip');if(c&&c.matches(':focus-visible'))showTip(c)});
+typesEl.addEventListener('focusout',hideTip);
+
+/* note tokens: mouse / touch */
+function tokAt(x,y){const el=document.elementFromPoint(x,y);return el&&el.closest?el.closest('.tok'):null}
+function paintPreview(){
+  noteEl.querySelectorAll('.tok').forEach(t=>t.classList.remove('pv-target','pv-value'));
+  if(!drag)return;
+  const lo=Math.min(drag.a,drag.b),hi=Math.max(drag.a,drag.b);
+  noteEl.querySelectorAll('.tok').forEach(t=>{const k=+t.dataset.i;if(k>=lo&&k<=hi)t.classList.add('pv-'+S.active)});
+}
+noteEl.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.tok');if(!t||e.button!==0)return;
+  e.preventDefault();hideTip();
+  drag={a:+t.dataset.i,b:+t.dataset.i,shift:e.shiftKey};paintPreview();
+});
+document.addEventListener('pointermove',e=>{
+  if(!drag)return;const t=tokAt(e.clientX,e.clientY);
+  if(t){const k=+t.dataset.i;if(k!==drag.b){drag.b=k;paintPreview()}}
+});
+document.addEventListener('pointerup',e=>{
+  if(!drag)return;const t=tokAt(e.clientX,e.clientY);
+  if(t)drag.b=+t.dataset.i;
+  const {a,b,shift}=drag;drag=null;paintPreview();commitMark(a,b,shift||e.shiftKey);
+});
+document.addEventListener('pointercancel',()=>{drag=null;paintPreview()});
+noteEl.addEventListener('click',e=>{
+  if(e.detail!==0)return;const t=e.target.closest('.tok');if(t)commitMark(+t.dataset.i,+t.dataset.i,e.shiftKey);
+});
+
+/* slots */
+slotsEl.addEventListener('click',e=>{
+  const row=e.target.closest('.slot');if(!row)return;const s=row.dataset.slot;
+  if(e.target.closest('.x')){act(()=>clearSlot(s));return}
+  if(e.target.closest('.nonebtn')){act(()=>{S.active=s;setNone()});return}
+  if(e.target.closest('.stat')){act(()=>toggleStatus(s));return}
+  act(()=>pickSlot(s));
+});
+noteIn.addEventListener('input',()=>{cur().note=noteIn.value;S.noteErr=false;S.msg=null;render()});
+
+/* footer buttons */
+$('#bPrev').onclick=()=>go(-1);
+$('#bNext').onclick=()=>go(1);
+$('#bDiscard').onclick=discard;
+$('#bUndo').onclick=undo;
+$('#bUnsure').onclick=pressUnsure;
+$('#bSkip').onclick=()=>act(()=>save('skipped'));
+$('#bComplete').onclick=()=>act(()=>save('complete'));
+
+/* ================= render ================= */
+function renderNote(d,e){
+  const n=NOTES[S.i],owner=new Array(n.toks.length).fill(null);
+  for(const s of SLOTS){const sp=e[s];if(sp)for(let k=sp.a;k<=sp.b;k++)owner[k]={slot:s,sp}}
+  const cu=S.cursor;let h='';
+  n.parts.forEach((p,pi)=>{
+    if(p.k==='p'){h+='<span class="pu">'+esc(p.t)+'</span>';return}
+    if(p.k==='sp'){
+      const pv=n.parts[pi-1],nx=n.parts[pi+1];let c='gap';
+      if(pv&&nx&&pv.k==='t'&&nx.k==='t'){const o1=owner[pv.n],o2=owner[nx.n];if(o1&&o2&&o1.sp.a===o2.sp.a&&o1.slot===o2.slot)c+=' m-'+o1.slot}
+      h+='<span class="'+c+'">'+esc(p.t)+'</span>';return;
+    }
+    const k=p.n,o=owner[k];let c='tok',tag='';
+    if(o){c+=' m-'+o.slot;if(k===o.sp.a)c+=' sf';if(k===o.sp.b){c+=' sl';tag=' data-tag="'+o.slot+'"'}}
+    if(cu&&k>=cu.a&&k<=cu.b)c+=' cur';
+    h+='<span class="'+c+'" data-i="'+k+'"'+tag+'>'+esc(n.toks[k].t)+'</span>';
+  });
+  noteEl.innerHTML=h;
+}
+function renderSlots(d,e){
+  slotsEl.innerHTML=SLOTS.map(s=>{
+    const def=SPANDEF[s],locked=!applicable(d,s),v=e[s],act_=S.active===s&&!locked;
+    const needs=S.need&&S.need.slots.includes(s);
+    let val,meta='',cl='slot '+s+(act_?' active':'')+(locked?' locked':'')+(needs?' need':'');
+    const n=NOTES[S.i];
+    if(locked){val='<span class="none">none ('+esc(d.type)+')</span>';meta='<span class="meta">locked</span>'}
+    else if(v===undefined){
+      val='<span class="unmarked'+(needs?' need':'')+'">not marked</span> <button class="nonebtn" title="This note has no '+def.name.toLowerCase()+'">none <kbd class="kb">n</kbd></button>';
+      meta=act_?'<span class="meta pick">'+T('click a word','tap a word')+'</span>':'<span class="meta"></span>';
+    }else if(v===null){val='<span class="none">—</span> <span class="none" style="font-size:14px">none</span>';meta='<span class="meta"></span>'}
+    else{const o=spanOff(n,v);val='<span title="'+esc(spanText(n,v))+'">'+esc(spanText(n,v))+'</span>';meta='<span class="meta">['+o[0]+','+o[1]+')</span>'}
+    let stat='<span class="statcell"></span>';
+    if(def.statuses&&!locked){
+      const un=e.valueStatus==='uncertain';
+      stat='<span class="statcell"><button class="stat" aria-pressed="'+un+'" aria-label="'+def.name+' status: '+(un?'unsure':'sure')+'. Press to toggle (c)" title="Toggle sure / unsure for the active slot">'
+        +'<span class="o'+(un?'':' on')+'">sure</span><span class="o'+(un?' on unsure':'')+'">unsure</span><kbd class="kb">c</kbd></button></span>';
+    }
+    const x=(!locked&&v!==undefined)?'<button class="x" aria-label="Clear '+def.name+'" title="Clear '+def.name+'">×</button>':'<span class="xph"></span>';
+    return '<div class="'+cl+'" data-slot="'+s+'" role="group" aria-label="'+def.name+' slot'+(act_?', active':'')+'">'
+      +'<span class="sw"></span>'
+      +'<span class="sname"><span class="l1">'+def.name+' <kbd class="kb">'+def.key+'</kbd></span><span class="l2">'+esc(def.hint)+'</span></span>'
+      +'<span class="sval">'+val+'</span>'+meta+stat+x+'</div>';
+  }).join('');
+}
+function render(){
+  const d=cur(),e=eff(d),n=NOTES[S.i],rec=S.saved[S.i],dirty=isDirty(S.i);
+  /* header */
+  $('#pos').textContent=S.i+1;$('#tot').textContent=NOTES.length;
+  const savedN=Object.keys(S.saved).length;
+  $('#savedCount').textContent=savedN+' saved';
+  segsEl.setAttribute('aria-valuenow',S.i+1);segsEl.setAttribute('aria-valuetext','Note '+(S.i+1)+' of '+NOTES.length+', '+savedN+' saved');
+  segsEl.innerHTML=NOTES.map((_,i)=>{
+    const r=S.saved[i];let c='seg';
+    if(r&&!isDirty(i))c+=r.status==='complete'?' sc':r.status==='uncertain'?' su':' ss';
+    else if(isDirty(i))c+=' dr';
+    if(i===S.i)c+=' cur';
+    const t='Note '+(i+1)+(r?' · saved '+r.status:'')+(isDirty(i)?' · edited, not saved':'');
+    return '<button class="'+c+'" data-i="'+i+'" title="'+t+'" aria-label="'+t+'"></button>';
+  }).join('');
+  /* types */
+  typesEl.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-checked',c.dataset.type===e.type));
+  typesEl.classList.toggle('needs',!!(S.need&&S.need.type));
+  if(e.type!==lastType){lastType=e.type;const sel=typesEl.querySelector('[aria-checked="true"]');
+    if(sel&&typesEl.scrollWidth>typesEl.clientWidth+2)sel.scrollIntoView({inline:'nearest',block:'nearest'})}
+  renderNote(d,e);renderSlots(d,e);
+  /* slot message */
+  slotMsgEl.textContent=S.slotMsg?S.slotMsg.t:'';
+  slotMsgEl.className='slotmsg'+(S.slotMsg&&S.slotMsg.err?' err':'');
+  /* note field */
+  const show=noteVisible(d);
+  noteBox.classList.toggle('show',show);noteBox.classList.toggle('err',show&&S.noteErr);
+  if(document.activeElement!==noteIn&&noteIn.value!==d.note)noteIn.value=d.note;
+  noteHint.innerHTML=S.noteErr?'Add a note: what is unclear?'
+    :d.unsure?'<kbd class="kb">Enter</kbd> saves as uncertain · <kbd class="kb">Esc</kbd> leaves the field'
+    :'<kbd class="kb">Enter</kbd> saves complete, Value unsure · <kbd class="kb">Esc</kbd> leaves the field';
+  if(S.focusNote){S.focusNote=false;if(show)noteIn.focus({preventScroll:true})}
+  /* footer */
+  let st='Not saved',sc='state';
+  if(rec&&!dirty){st='Saved ✓ '+rec.status;sc+=' ok'}
+  else if(rec&&dirty){st='Edited — not saved';sc+=' edit'}
+  stateEl.textContent=st;stateEl.className=sc;
+  snoteEl.textContent=rec&&rec.note?'“'+rec.note+'”':'';snoteEl.title=rec&&rec.note?rec.note:'';
+  if(S.msg){msgEl.textContent=S.msg.t;msgEl.className='msg'+(S.msg.err?' err':S.msg.ok?' ok':'')}
+  else{msgEl.textContent=rec&&!dirty?T('Saved. Enter re-saves and moves on.','Saved. Complete re-saves and moves on.'):T('Enter saves as complete and goes to the next note.','Complete saves and goes to the next note.');msgEl.className='msg'}
+  $('#bPrev').disabled=S.i===0;$('#bNext').disabled=S.i===NOTES.length-1;
+  $('#bUndo').disabled=!S.undo.length;
+  $('#bDiscard').disabled=!(dirty||(!rec&&key(eff(d))!==key(eff(emptyDraft()))));
+  $('#bUnsure').setAttribute('aria-pressed',String(!!d.unsure));
+}
+segsEl.addEventListener('click',e=>{const b=e.target.closest('.seg');if(b)goTo(+b.dataset.i)});
+
+/* ================= help ================= */
+function buildHelp(){
+  const K=(...k)=>k.map(x=>'<kbd>'+x+'</kbd>').join(' ');
+  const keys=[
+   [K('1')+' – '+K('8'),'Pick the type'],[K('t')+' '+K('v')+' '+K('Tab'),'Choose the active slot (Target / Value)'],
+   [K('n'),'Active slot has no span (none)'],[K('c'),'Toggle the active slot sure / unsure (Value)'],
+   [K('↑')+' '+K('↓'),'Move the word cursor'],[K('Shift')+'+'+K('↑')+K('↓'),'Extend the cursor over more words'],
+   [K('Space'),'Mark the cursor words into the active slot'],
+   [K('Enter'),'Save as complete, go to the next note'],[K('u'),'Unsure: add a note, then Enter saves uncertain'],
+   [K('s'),'Skip: save with all nulls'],[K('z'),'Undo the last action'],
+   [K('←')+' '+K('→'),'Previous / next note'],[K('Esc'),'Discard the draft (in the note field: leave it)'],[K('?'),'This panel']
+  ].map(r=>'<div class="krow"><div class="k">'+r[0]+'</div><div>'+r[1]+'</div></div>').join('');
+  const defs=TYPES.map((t,i)=>'<div class="def"><span class="num">'+(i+1)+'</span><b>'+t.key+' <span style="font-weight:400;color:#586073">· '+esc(t.gloss)+'</span></b><p>'+esc(t.def)+'</p></div>').join('');
+  const spans=SLOTS.map(s=>'<div class="def"><span class="num" style="background:'+(s==='target'?'var(--t)':'var(--v)')+';border-color:transparent;color:#fff">'+SPANDEF[s].key+'</span><b>'+SPANDEF[s].name+'</b><p>'+esc(SPANDEF[s].desc)+'</p></div>').join('');
+  const sts=STATUS_DESC.map(r=>'<div class="def"><span></span><b>'+r[0]+'</b><p>'+esc(r[1])+'</p></div>').join('');
+  $('#helpBody').innerHTML='<h3>Keys</h3>'+keys
+   +'<h3>Mouse</h3><p class="plain">Click a word to set the active slot. Shift+click or drag across words for a multi-word span. × clears a slot. Click a slot to make it active.</p>'
+   +'<h3>Types</h3>'+defs+'<h3>Spans</h3>'+spans+'<h3>Save statuses</h3>'+sts
+   +'<h3>Words</h3><p class="plain">The note splits on whitespace. Punctuation at the start or end of a word is trimmed; inside it stays, so 215.000 and 80.000đ are one word. Offsets are Unicode code points, shown as [start,end).</p>';
+}
+buildHelp();
+let helpFrom=null;
+function openHelp(){S.help=true;helpFrom=document.activeElement;hideTip();$('#help').hidden=false;$('#scrim').hidden=false;$('#helpClose').focus()}
+function closeHelp(){S.help=false;$('#help').hidden=true;$('#scrim').hidden=true;if(helpFrom&&helpFrom.focus)helpFrom.focus();helpFrom=null}
+$('#helpBtn').onclick=()=>S.help?closeHelp():openHelp();
+$('#helpClose').onclick=closeHelp;$('#scrim').onclick=closeHelp;
+
+/* ================= keyboard ================= */
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key;
+  if(e.target===noteIn){
+    if(k==='Enter'){e.preventDefault();if(!e.repeat){const d=cur();act(()=>save(d.unsure?'uncertain':'complete'))}}
+    else if(k==='Escape'){e.preventDefault();noteIn.blur()}
+    return;
+  }
+  if(S.help){if(k==='Escape'||k==='?'){e.preventDefault();closeHelp()}return}
+  const lk=k.length===1?k.toLowerCase():k;
+  let fn=null;
+  if(/^[1-8]$/.test(k))fn=()=>act(()=>setType(TYPES[+k-1].key));
+  else switch(lk){
+    case 't':fn=()=>act(()=>pickSlot('target'));break;
+    case 'v':fn=()=>act(()=>pickSlot('value'));break;
+    case 'Tab':fn=()=>act(()=>pickSlot(S.active==='target'?'value':'target'));break;
+    case 'n':fn=()=>act(setNone);break;
+    case 'c':fn=()=>act(()=>toggleStatus(S.active));break;
+    case 'Enter':fn=()=>act(()=>save('complete'));break;
+    case 'u':fn=pressUnsure;break;
+    case 's':fn=()=>act(()=>save('skipped'));break;
+    case 'z':fn=undo;break;
+    case 'ArrowLeft':fn=()=>go(-1);break;
+    case 'ArrowRight':fn=()=>go(1);break;
+    case 'ArrowDown':fn=()=>moveCursor(1,e.shiftKey);break;
+    case 'ArrowUp':fn=()=>moveCursor(-1,e.shiftKey);break;
+    case ' ':fn=markCursor;break;
+    case '?':fn=openHelp;break;
+    case 'Escape':fn=discard;break;
+  }
+  if(!fn)return;
+  e.preventDefault();hideTip();if(!e.repeat)fn();
+});
+
+/* test hook for the verification run */
+window.__quet={state:S,notes:NOTES};
+
+S.active=defaultActive(cur());
+render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quet labelling v2 - Variant A (Label Studio arrangement)</title>
+<style>
+/* Quet labeller. Mimics shadcn/ui (new-york, neutral base, v4 tokens) in plain CSS:
+   the labeller ships as vanilla TS, so components are re-created by anatomy, not imported.
+   Target/Value use shadcn chart-1 (orange) and chart-2 (teal); everything else is neutral. */
+@font-face{font-family:"Geist";src:url(fonts/Geist-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url(fonts/GeistMono-Variable.woff2) format("woff2");font-weight:100 900;font-display:swap}
+:root{
+  color-scheme:light;
+  --radius:.625rem;
+  --background:oklch(1 0 0); --foreground:oklch(.145 0 0);
+  --card:oklch(1 0 0); --card-foreground:oklch(.145 0 0);
+  --popover:oklch(1 0 0);
+  --primary:oklch(.205 0 0); --primary-foreground:oklch(.985 0 0);
+  --secondary:oklch(.97 0 0); --muted:oklch(.97 0 0); --muted-foreground:oklch(.556 0 0);
+  --accent:oklch(.97 0 0); --accent-foreground:oklch(.205 0 0);
+  --destructive:oklch(.577 .245 27.325);
+  --border:oklch(.922 0 0); --input:oklch(.922 0 0); --ring:oklch(.708 0 0);
+  --chart-1:oklch(.646 .222 41.116); --chart-2:oklch(.6 .118 184.704);
+  --t:var(--chart-1); --v:var(--chart-2);
+  --t-ink:oklch(.47 .16 41); --v-ink:oklch(.43 .09 185);
+  --shadow-xs:0 1px 2px 0 rgb(0 0 0 / .05);
+  --shadow-sm:0 1px 3px 0 rgb(0 0 0 / .1),0 1px 2px -1px rgb(0 0 0 / .1);
+  --shadow-lg:0 10px 15px -3px rgb(0 0 0 / .1),0 4px 6px -4px rgb(0 0 0 / .1);
+  --r-sm:calc(var(--radius) - 4px); --r-md:calc(var(--radius) - 2px); --r-lg:var(--radius); --r-xl:calc(var(--radius) + 4px);
+  --active:var(--t);
+  --sans:"Geist",ui-sans-serif,system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  color-scheme:dark;
+  --background:oklch(.145 0 0); --foreground:oklch(.985 0 0);
+  --card:oklch(.205 0 0); --card-foreground:oklch(.985 0 0); --popover:oklch(.205 0 0);
+  --primary:oklch(.922 0 0); --primary-foreground:oklch(.205 0 0);
+  --secondary:oklch(.269 0 0); --muted:oklch(.269 0 0); --muted-foreground:oklch(.708 0 0);
+  --accent:oklch(.269 0 0); --accent-foreground:oklch(.985 0 0);
+  --destructive:oklch(.704 .191 22.216);
+  --border:oklch(1 0 0 / 10%); --input:oklch(1 0 0 / 15%); --ring:oklch(.556 0 0);
+  --chart-1:oklch(.705 .19 45); --chart-2:oklch(.696 .17 162.48);
+  --t-ink:oklch(.82 .12 50); --v-ink:oklch(.84 .11 165);
+}}
+*{box-sizing:border-box;border-color:var(--border)}
+html,body{height:100%;margin:0}
+body{background:var(--background);color:var(--foreground);font:14px/1.5 var(--sans);
+  display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;outline:none}
+button:disabled{cursor:default}
+button:focus-visible,input:focus-visible{border-color:var(--ring)!important;box-shadow:0 0 0 3px color-mix(in oklab,var(--ring) 50%,transparent)!important}
+.ic{width:16px;height:16px;flex:none;pointer-events:none}
+/* Kbd */
+kbd{pointer-events:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:20px;min-width:20px;padding:0 4px;border-radius:var(--r-sm);
+  background:var(--muted);color:var(--muted-foreground);font:500 12px/1 var(--sans);user-select:none}
+kbd .ic{width:12px;height:12px}
+@media (prefers-reduced-motion:no-preference){
+  button,.tok,.slot{transition:color .15s,background-color .15s,border-color .15s,box-shadow .15s}
+  .bmsg:not([hidden]){animation:toast-in .2s ease-out}
+  @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+
+/* header */
+header{flex:none;height:56px;display:flex;align-items:center;gap:16px;padding:0 24px;border-bottom:1px solid var(--border);background:var(--background)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;white-space:nowrap}
+.brand b{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand span{color:var(--muted-foreground);font-size:14px;overflow:hidden;text-overflow:ellipsis;padding-left:12px;border-left:1px solid var(--border);line-height:16px}
+.prog{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:12px;min-width:0}
+.segs{width:min(240px,30vw);height:8px;border-radius:999px;background:color-mix(in oklab,var(--primary) 20%,transparent);overflow:hidden;display:block}
+.segs i{display:block;height:100%;background:var(--primary);transition:width .2s}
+.count{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.count small{font-weight:400;color:var(--muted-foreground);font-size:14px;margin-left:6px}
+/* Button: outline / icon */
+.qbtn{height:36px;width:36px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--background);box-shadow:var(--shadow-xs);font-size:14px;font-weight:500}
+.qbtn:hover{background:var(--accent)}
+.qbtn[aria-expanded=true]{background:var(--accent)}
+#helpClose{width:auto;padding:0 12px}
+
+main{flex:1;min-height:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 24px 16px;display:flex;flex-direction:column;gap:16px}
+
+/* span slots: small Cards */
+.strip{flex:none;display:flex;flex-direction:column;gap:12px}
+.strip-top{display:none}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.slot{--c:var(--t);--cink:var(--t-ink);display:flex;align-items:center;min-width:0;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-xs);position:relative}
+.slot.value{--c:var(--v);--cink:var(--v-ink)}
+.slot:hover{border-color:color-mix(in oklab,var(--c) 45%,var(--border))}
+.slot.active{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in oklab,var(--c) 22%,transparent)}
+.slot.locked{background:var(--muted);box-shadow:none;border-style:dashed}
+.slot-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 8px 12px 16px;border:0;background:none;text-align:left;border-radius:var(--r-xl)}
+.slot-main:focus-visible{box-shadow:none!important}
+.slot-main .kb{display:none}
+.stack{min-width:0;display:flex;flex-direction:column;gap:4px}
+.sl{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--foreground);white-space:nowrap}
+.sl::before{content:"";width:8px;height:8px;border-radius:999px;background:var(--c);flex:none}
+.slot.locked .sl::before{background:var(--muted-foreground)}
+.sl .key{margin-left:2px}
+.sl .off{font:400 12px var(--mono);color:var(--muted-foreground)}
+.sl .un{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--border);font-size:12px;font-weight:500;color:var(--foreground)}
+.sv{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sv.unset{font-weight:400;color:var(--muted-foreground)}
+.sv.none small{font-size:13px;font-weight:400;color:var(--muted-foreground);margin-left:4px}
+.sv.locked{font-weight:500;color:var(--muted-foreground);font-size:16px}
+.acts{display:flex;align-items:center;gap:8px;padding:0 12px 0 0}
+/* Button outline sm + ghost icon */
+.mini{height:32px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--background);box-shadow:var(--shadow-xs);font-size:13px;font-weight:500;white-space:nowrap}
+.mini:hover{background:var(--accent)}
+.mini.x{width:32px;padding:0;justify-content:center;border-color:transparent;background:transparent;box-shadow:none;color:var(--muted-foreground)}
+.mini.x:hover{background:var(--accent);color:var(--foreground)}
+/* ToggleGroup outline sm */
+.stat{padding:0;gap:0;overflow:hidden}
+.stat:hover{background:var(--background)}
+.stat span{display:inline-flex;align-items:center;height:100%;padding:0 10px;color:var(--muted-foreground)}
+.stat span+span{border-left:1px solid var(--border)}
+.stat span:hover{background:var(--muted);color:var(--foreground)}
+.stat .on{background:var(--accent);color:var(--accent-foreground)}
+.stat.u .on{background:var(--primary);color:var(--primary-foreground)}
+.stat kbd{margin:0 6px}
+
+/* note field (Field + Input) */
+.noterow{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-xs)}
+.noterow[hidden]{display:none}
+.noterow label{font-size:14px;font-weight:500;white-space:nowrap}
+.noterow input{flex:1;min-width:0;height:36px;border:1px solid var(--input);border-radius:var(--r-md);padding:4px 12px;font:inherit;font-size:14px;background:transparent;color:var(--foreground);box-shadow:var(--shadow-xs);outline:none}
+.noterow input::placeholder{color:var(--muted-foreground)}
+.nh{font-size:13px;color:var(--muted-foreground);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.nx{height:32px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--background);box-shadow:var(--shadow-xs);font-size:13px;font-weight:500;white-space:nowrap}
+.nx:hover{background:var(--accent)}
+
+/* note Card */
+.card{flex:1;min-height:150px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px 32px 20px;position:relative}
+.card.a-value{--active:var(--v)}.card.a-target{--active:var(--t)}.card.a-none{--active:var(--ring)}
+.note{font-size:clamp(34px,6.6vh,60px);line-height:1.45;font-weight:500;letter-spacing:-.03em;user-select:none;-webkit-user-select:none;touch-action:none;overflow-wrap:anywhere}
+.tok,.gap{border-bottom:3px solid transparent}
+.tok{cursor:pointer;border-radius:var(--r-sm);padding:0 4px;margin:0 -4px}
+.tok:hover{background:color-mix(in oklab,var(--active) 12%,transparent)}
+.t{background:color-mix(in oklab,var(--t) 16%,transparent);border-bottom-color:var(--t);color:var(--t-ink)}
+.v{background:color-mix(in oklab,var(--v) 16%,transparent);border-bottom-color:var(--v);color:var(--v-ink)}
+.tok.t:hover{background:color-mix(in oklab,var(--t) 26%,transparent)}
+.tok.v:hover{background:color-mix(in oklab,var(--v) 26%,transparent)}
+.v.unsure{border-bottom-style:dashed}
+.tok.pre{background:color-mix(in oklab,var(--active) 20%,transparent);border-bottom-color:var(--active);border-bottom-style:dotted}
+.tok.cur{box-shadow:0 0 0 2px var(--background),0 0 0 4px var(--ring)}
+.hintrow{flex:none;min-height:24px;display:flex;align-items:center;gap:12px;color:var(--muted-foreground);font-size:14px;flex-wrap:wrap;row-gap:4px}
+.hintrow b.t,.hintrow b.v{background:none;border:0;padding:0;font-weight:500}
+.hintrow b.t{color:var(--t-ink)}.hintrow b.v{color:var(--v-ink)}
+.hintrow .hk{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-size:13px}
+.hintrow .hk kbd+span,.hintrow .hk span+kbd{margin-left:2px}
+.imsg{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--destructive)}
+.imsg.info{color:var(--foreground)}
+
+/* type picker: ToggleGroup outline, 4x2 */
+.types{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.type{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;min-height:clamp(64px,8.6vh,78px);text-align:left;background:var(--background);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-xs);color:var(--foreground)}
+.type:hover{background:var(--accent)}
+.type .kb{flex:none;margin-top:1px}
+.type .tn{display:block;font-size:14px;font-weight:500;line-height:20px}
+.type .tg{display:block;font-size:13px;line-height:18px;color:var(--muted-foreground)}
+.type[aria-pressed=true]{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.type[aria-pressed=true] .tg{color:color-mix(in oklab,var(--primary-foreground) 70%,transparent)}
+.type[aria-pressed=true] .kb{background:color-mix(in oklab,var(--primary-foreground) 18%,transparent);color:var(--primary-foreground)}
+
+/* footer */
+footer{flex:none;position:relative;border-top:1px solid var(--border);background:var(--background);padding:12px 24px calc(12px + env(safe-area-inset-bottom))}
+.bar{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:8px}
+.bl{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.br{display:flex;align-items:center;gap:8px;flex:none}
+/* Button outline default size */
+.btn{height:36px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--background);box-shadow:var(--shadow-xs);font-size:14px;font-weight:500;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--accent)}
+.btn:disabled{opacity:.5}
+.btn.nav{width:36px;padding:0}
+.btn.nav .lbl{display:none}
+.btn.on{background:var(--accent);border-color:var(--ring)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground);padding:0 16px}
+.btn.primary:hover{background:color-mix(in oklab,var(--primary) 90%,transparent)}
+.btn.primary kbd{background:color-mix(in oklab,var(--primary-foreground) 18%,transparent);color:var(--primary-foreground)}
+.state{display:flex;align-items:center;gap:8px;min-width:0;flex:1;margin-left:4px}
+/* Badge */
+.chip{flex:none;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid transparent;font-size:12px;font-weight:500;white-space:nowrap}
+.chip .ic{width:12px;height:12px}
+.chip.saved{background:var(--primary);color:var(--primary-foreground)}
+.chip.edited{border-color:var(--border);color:var(--foreground)}
+.chip.unsaved{background:var(--secondary);color:var(--muted-foreground)}
+.snote{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted-foreground);font-size:13px}
+.snote b{color:var(--foreground);font-weight:500}
+/* Toast (sonner-like) */
+.bmsg{position:absolute;right:24px;bottom:calc(100% + 12px);width:min(420px,calc(100vw - 48px));display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:var(--r-lg);
+  background:var(--popover);color:var(--foreground);border:1px solid var(--border);box-shadow:var(--shadow-lg);font-size:13px;font-weight:500;z-index:30}
+.bmsg[hidden]{display:none}
+.bmsg.err{color:var(--destructive)}
+.bmsg .mt{flex:1;min-width:0}
+.bmsg button{height:32px;padding:0 10px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--background);box-shadow:var(--shadow-xs);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;color:var(--foreground)}
+.bmsg button:hover{background:var(--accent)}
+
+/* Tooltip + help Sheet */
+#tip{position:fixed;z-index:60;width:320px;max-width:calc(100vw - 16px);background:var(--primary);color:var(--primary-foreground);padding:6px 12px;border-radius:var(--r-md);font-size:12px;line-height:1.5;pointer-events:none}
+#tip[hidden]{display:none}
+#tip b{display:block;font-size:12px;font-weight:600;margin-bottom:2px}
+#help{position:fixed;z-index:50;top:0;right:0;bottom:0;width:min(520px,100vw);background:var(--background);border-left:1px solid var(--border);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden}
+#help[hidden]{display:none}
+#help .hh{flex:none;display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px 24px;font-weight:600;font-size:16px}
+#help .hb{overflow:auto;padding:0 24px 24px;font-size:14px}
+#help h3{font-size:14px;font-weight:600;margin:20px 0 8px}
+#help dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;align-items:baseline}
+#help dt{font-weight:500;white-space:nowrap}
+#help dd{margin:0;color:var(--muted-foreground)}
+#help .kl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;align-items:center;color:var(--muted-foreground)}
+#help .kl span:first-child{white-space:nowrap;color:var(--foreground)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* touch / phone */
+@media (pointer:coarse),(max-width:640px){ .kb,.hk,.sl .key{display:none!important} }
+@media (max-width:900px){ .types{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:640px){
+  header{height:52px;padding:0 12px;gap:10px}
+  .brand span{display:none}
+  .segs{width:96px}
+  .count small{display:none}
+  .qbtn{height:44px;width:44px}
+  main{padding:10px 12px;gap:10px}
+  .slots{grid-template-columns:1fr;gap:8px}
+  .slot{flex-wrap:wrap}
+  .slot-main{padding:8px 8px 8px 14px;min-height:48px}
+  .sv{font-size:18px}
+  .slot.active .acts{flex:1 0 100%;justify-content:flex-end;padding:0 8px 8px}
+  .slot.active .slot-main{padding-bottom:0}
+  .slot:not(.active) .acts .mini:not(.x){display:none}
+  .mini{height:44px;font-size:14px}
+  .mini.x{width:44px}
+  .noterow{flex-wrap:wrap;padding:8px}
+  .noterow label,.nh{display:none}
+  .noterow input{flex-basis:100%;height:44px;font-size:16px}
+  .card{min-height:0;padding:12px 16px}
+  .note{font-size:clamp(25px,7.2vw,30px);line-height:1.5}
+  .hintrow{font-size:13px}
+  .types{gap:6px}
+  .type{min-height:56px;padding:8px 10px}
+  .type .tg{font-size:12px;line-height:16px}
+  footer{padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+  .bar{flex-direction:column;align-items:stretch;gap:8px}
+  .br .btn{flex:1;padding:0 6px;height:44px;min-width:0}
+  .br .btn.primary{flex:1.8}
+  .btn.nav{width:44px;height:44px}
+  .btn.disc{font-size:13px}
+  .state{flex-wrap:wrap;gap:0 8px}
+  .snote{flex-basis:100%;order:3;font-size:12px}
+  .bmsg{left:12px;right:12px;width:auto;flex-wrap:wrap}
+  .bmsg button{height:44px}
+}
+@media (max-height:760px) and (min-width:641px){
+  .note{font-size:32px}
+  .type{min-height:60px}
+  main{gap:10px;padding-top:12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><b>quet</b><span>gidi / human-value-01</span></div>
+  <div class="prog">
+    <div class="segs" id="segs" role="progressbar" aria-label="Notes saved" aria-valuemin="0" aria-valuemax="12"></div>
+    <div class="count" id="count" aria-live="polite"></div>
+  </div>
+  <button class="qbtn" id="helpBtn" aria-expanded="false" aria-controls="help" aria-label="Help and key list"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+</header>
+
+<main>
+  <section class="strip" aria-label="Span labels">
+    <div class="strip-top"><span class="strip-title">Spans</span></div>
+    <div class="slots" id="slots"></div>
+    <div class="noterow" id="noteRow" hidden>
+      <label for="noteIn">Note</label>
+      <input id="noteIn" placeholder="What is unclear?" autocomplete="off" maxlength="240" aria-label="What is unclear?">
+      <span class="nh" id="noteHint"></span>
+      <button class="nx" id="noteX" type="button" hidden>Not unsure</button>
+    </div>
+  </section>
+
+  <section class="card a-target" id="card" aria-label="Note to label">
+    <div class="note" id="note" aria-label="Note text"></div>
+    <div class="hintrow" id="hintrow"></div>
+  </section>
+
+  <section class="types" id="types" aria-label="Transaction type"></section>
+</main>
+
+<footer id="foot">
+  <div class="bmsg" id="bmsg" role="status" aria-live="polite" hidden></div>
+  <div class="bar">
+    <div class="bl">
+      <button class="btn nav" data-act="prev" aria-label="Previous note"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span class="lbl">Prev</span></button>
+      <button class="btn nav" data-act="next" aria-label="Next note"><span class="lbl">Next</span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+      <div class="state" id="state" aria-live="polite"></div>
+    </div>
+    <div class="br">
+      <button class="btn disc" data-act="discard" id="bDisc">Discard <kbd class="kb">Esc</kbd></button>
+      <button class="btn" data-act="undo" id="bUndo">Undo <kbd class="kb">z</kbd></button>
+      <button class="btn" data-act="skip">Skip <kbd class="kb">s</kbd></button>
+      <button class="btn" data-act="unsure" id="bUnsure">Unsure <kbd class="kb">u</kbd></button>
+      <button class="btn primary" data-act="complete">Complete <kbd class="kb"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg></kbd></button>
+    </div>
+  </div>
+</footer>
+
+<div id="tip" role="tooltip" hidden></div>
+<aside id="help" role="dialog" aria-label="Help" hidden>
+  <div class="hh"><span>Help</span><button class="qbtn" id="helpClose" aria-label="Close help">Close <kbd class="kb">Esc</kbd></button></div>
+  <div class="hb" id="helpBody"></div>
+</aside>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- data (first 12 notes of gidi human-value-01 review queue; schema annotation-v2.quet.yaml) ---------- */
+const NOTES=[
+ ['baseline-01-37a5dafba00f','ve may bay vietjet tet 2tr9'],
+ ['baseline-01-c3f385126089','nhan tien freelance web 6tr'],
+ ['baseline-01-63a6a7bb054f','no tien hui thang nay 1tr'],
+ ['baseline-01-94bf7544d8b0','mua sách 215.000 fahasa'],
+ ['baseline-01-b60ff1da67c3','để dành tiền cưới 5tr'],
+ ['baseline-01-a74b152d7abb','Quang còn nợ mình 1tr'],
+ ['baseline-01-932842926220','khám răng 400.000'],
+ ['baseline-01-6bdae11c88c7','trả nốt tiền laptop 3tr'],
+ ['baseline-01-3a8d71af9433','bánh cuốn nóng 30k hôm qua'],
+ ['baseline-01-9874e9359de7','chuyển tiền ví sang ngân hàng 420k'],
+ ['baseline-01-c6f1f2cad163','phu cap an trua 730k'],
+ ['baseline-01-b65fb421eb37','chuyen vcb qua mb 5tr']
+].map(([id,text])=>({id,text}));
+
+const TYPES=[
+ {n:'expense',gloss:'money I spent',def:'Money leaves the user with no expectation of principal repayment.'},
+ {n:'income',gloss:'money I received',def:'Money received as salary, freelance/client payment, gift, sale proceeds, rewards, or other ordinary incoming money that is neither borrowing, debt repayment, nor refund.'},
+ {n:'borrow',gloss:'I borrowed, now owe',def:'The user receives loan principal and now owes another party.'},
+ {n:'lend',gloss:'I lent, they owe me',def:'The user gives loan principal to another party and expects repayment.'},
+ {n:'repayment_in',gloss:'they paid back what they owed me',def:'Another party repays money they previously owed the user (needs evidence of a prior debt; a bare "Nam trả 500k" is uncertain).'},
+ {n:'repayment_out',gloss:'I paid back a debt / instalment',def:'The user repays money they previously owed another party, including payments on an existing financed balance or liability (installments, BNPL, credit-card balance).'},
+ {n:'transfer',gloss:'between my own accounts or savings',def:'Movement between the user\'s own accounts, wallets, cash holdings, or savings, including conversion into investment/store-of-value assets the user still owns (fund certificates, gold held as savings, foreign currency). No economic income or expense occurs. vi-VN heuristic: precious metals/gems bought by quantity or purity (chỉ, lượng, phân, g, carat, 9999, 24K) are transfer ("mua nhẫn PNJ nửa chỉ") unless the note states a use, gift, ceremony, or fashion purpose, which overrides ("mua nhẫn vàng 1 chỉ tặng vợ" -> expense). A returned refundable deposit is transfer ("chủ nhà trả cọc 5tr", "lấy lại tiền cọc 2tr"); paying a deposit is transfer only when the note establishes it stays refundable.'},
+ {n:'refund',gloss:'money returned for an earlier spend',def:'Money returned to the user as reversal, reimbursement, rebate, or spending-linked cashback of an earlier expense.'}
+];
+const SPANS={
+ target:{label:'Target',key:'t',nullFor:['transfer'],statuses:null,
+  def:'Minimal explicit expression for the external financial counterparty: a named merchant/service/platform ("highlands", "shopee"), a person, or a kinship/role noun that is the only identifier (mẹ, khách, cty, chủ nhà, sếp), without a kinship/title prefix before a proper name (anh/chị/bé). Never items, dishes, activities, bill names ("cơm gà", "tiền nhà"), companions (với/cùng), beneficiaries (cho bé) or a payment app/bank used only as the channel. No counterparty named -> none (n). Several plausible counterparties -> mark the note Unsure. Always none for transfer.'},
+ value:{label:'Value',key:'v',nullFor:[],statuses:['complete','uncertain'],
+  def:'The monetary amount: the minimal full amount expression, the number plus the unit, slang or currency marker attached to it ("50k", "1tr5", "2 triệu", "5 xị", "80.000đ", "100", "bốn triệu"). Exclude quantities, item counts, months/periods/ordinals, dates, times, percentages, identifiers, approximators (tầm, khoảng) and /tháng. Never normalise the text. The note states no amount -> none (n). Several amounts and none clearly the transaction amount -> set Value to unsure (c) and say why in the note.'}
+};
+const SLOTS=['target','value'];
+const STATUS_DEF={
+ complete:'Type, target (or explicit none) and value are confidently determined.',
+ uncertain:'The text does not establish the type, the target or the value; never forced. A note saying what is unclear is required.',
+ skipped:'Not a usable finance note, a valid finance note outside the transaction-event taxonomy, or not worth labelling. Type, target and value are all saved as none.'
+};
+
+/* ---------- tokens (whitespace words; edge punctuation trimmed, inner kept; offsets in code points) ---------- */
+const isWs=c=>/\s/.test(c), isPunct=c=>!/[\p{L}\p{N}]/u.test(c);
+function tokenize(text){
+  const cps=Array.from(text),n=cps.length,toks=[],pieces=[];
+  let i=0;
+  while(i<n){
+    if(isWs(cps[i])){let j=i;while(j<n&&isWs(cps[j]))j++;pieces.push({s:i,e:j,tok:-1});i=j;continue;}
+    let j=i;while(j<n&&!isWs(cps[j]))j++;
+    let a=i,b=j;
+    while(a<b&&isPunct(cps[a]))a++;
+    while(b>a&&isPunct(cps[b-1]))b--;
+    if(a>i)pieces.push({s:i,e:a,tok:-1});
+    if(b>a){toks.push({s:a,e:b});pieces.push({s:a,e:b,tok:toks.length-1});}
+    if(j>b)pieces.push({s:b,e:j,tok:-1});
+    i=j;
+  }
+  return {cps,toks,pieces};
+}
+NOTES.forEach(n=>{n.tk=tokenize(n.text);});
+const sliceText=(n,s,e)=>n.tk.cps.slice(s,e).join('');
+
+/* ---------- state ---------- */
+const emptyDraft=()=>({type:null,target:undefined,value:undefined,vstatus:'complete',unsure:false,note:''});
+const S={idx:0,saved:{},drafts:{},active:'target',cursor:null,lastMark:null,history:[],imsg:null,bmsg:null,drag:null};
+// pre-saved note (so Saved state and revisiting are visible): #2 income, no target, 6tr
+S.saved[1]={status:'complete',type:'income',target:null,value:{s:24,e:27},vstatus:'complete',note:''};
+
+const clone=o=>structuredClone(o);
+const toDraft=r=>({type:r.type,target:r.target,value:r.value,vstatus:r.vstatus,unsure:r.status==='uncertain',note:r.note||''});
+const baseline=i=>S.saved[i]?toDraft(S.saved[i]):emptyDraft();
+const getDraft=i=>S.drafts[i]||baseline(i);
+const cur=()=>getDraft(S.idx);
+const spanKey=v=>v===undefined?'u':v===null?'n':v.s+','+v.e;
+const dkey=d=>JSON.stringify([d.type,d.type==='transfer'?'x':spanKey(d.target),spanKey(d.value),d.vstatus,!!d.unsure,(d.note||'').trim()]);
+const dirty=i=>dkey(getDraft(i))!==dkey(baseline(i));
+const applicable=(d,slot)=>!(SPANS[slot].nullFor.includes(d.type));
+const noteShown=d=>d.unsure||d.vstatus==='uncertain'||(d.note||'').trim()!=='';
+const typeByKey=k=>TYPES[k-1];
+
+function snapshot(){return {idx:S.idx,saved:clone(S.saved),drafts:clone(S.drafts),active:S.active};}
+function pushHistory(){S.history.push(snapshot());if(S.history.length>200)S.history.shift();}
+function mutate(fn){
+  pushHistory();
+  const d=clone(cur());fn(d);S.drafts[S.idx]=d;
+}
+function firstOpen(d,fallback){
+  for(const s of SLOTS) if(applicable(d,s)&&d[s]===undefined) return s;
+  return fallback;
+}
+function defaultActive(d){return firstOpen(d,applicable(d,'target')?'target':'value');}
+function nextOpenAfter(d,slot){
+  for(const s of SLOTS) if(s!==slot&&applicable(d,s)&&d[s]===undefined) return s;
+  return slot;
+}
+
+/* ---------- messages ---------- */
+let imT=0,bmT=0;
+function imsg(text,tone){S.imsg={text,tone:tone||'err'};clearTimeout(imT);imT=setTimeout(()=>{S.imsg=null;renderHint();},4500);renderHint();}
+function bmsg(text,tone,action,ms){S.bmsg={text,tone:tone||'err',action};clearTimeout(bmT);bmT=setTimeout(()=>{S.bmsg=null;renderBar();},ms||(tone==='err'?9000:5000));renderBar();}
+function clearMsgs(){S.imsg=null;S.bmsg=null;clearTimeout(imT);clearTimeout(bmT);}
+
+/* ---------- DOM ---------- */
+const $=id=>document.getElementById(id);
+const el={segs:$('segs'),count:$('count'),slots:$('slots'),note:$('note'),card:$('card'),hint:$('hintrow'),types:$('types'),state:$('state'),bmsg:$('bmsg'),
+  noteRow:$('noteRow'),noteIn:$('noteIn'),noteHint:$('noteHint'),noteX:$('noteX'),help:$('help'),helpBody:$('helpBody'),helpBtn:$('helpBtn'),tip:$('tip'),
+  bUndo:$('bUndo'),bDisc:$('bDisc'),bUnsure:$('bUnsure')};
+const cache=new Map();
+function setHTML(node,key,html){if(cache.get(key)!==html){cache.set(key,html);node.innerHTML=html;}}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderHeader(){
+  const n=Object.keys(S.saved).length;
+  el.segs.setAttribute('aria-valuenow',n);
+  setHTML(el.segs,'segs',`<i style="width:${(n/NOTES.length*100).toFixed(2)}%"></i>`);
+  setHTML(el.count,'count',`Note ${S.idx+1} of ${NOTES.length}<small>${n} saved</small>`);
+}
+
+function slotHTML(slot,d){
+  const cfg=SPANS[slot],locked=!applicable(d,slot),v=d[slot],act=S.active===slot&&!locked;
+  const note=NOTES[S.idx];
+  let val,off='';
+  if(locked) val=`<span class="sv locked">none (${esc(d.type)})</span>`;
+  else if(v===undefined) val='<span class="sv unset">not marked</span>';
+  else if(v===null) val='<span class="sv none">None <small>not in the note</small></span>';
+  else{val=`<span class="sv">${esc(sliceText(note,v.s,v.e))}</span>`;off=`<span class="off">[${v.s},${v.e})</span>`;}
+  const unsure=cfg.statuses&&d.vstatus==='uncertain';
+  const un=unsure?'<span class="un">unsure</span>':'';
+  let acts='';
+  if(cfg.statuses&&!locked){
+    acts+=`<button class="mini stat${unsure?' u':''}" data-act="toggle" data-slot="${slot}" aria-pressed="${unsure}" aria-label="Value is ${unsure?'unsure':'sure'}; toggle"><span class="${unsure?'':'on'}">Sure</span><span class="${unsure?'on':''}">Unsure</span>${act?'<kbd class="kb">c</kbd>':''}</button>`;
+  }
+  if(!locked){
+    acts+=`<button class="mini" data-act="none" data-slot="${slot}" aria-label="Mark ${cfg.label} as none">None${act?'<kbd class="kb">n</kbd>':''}</button>`;
+    if(v!==undefined) acts+=`<button class="mini x" data-act="clear" data-slot="${slot}" aria-label="Clear ${cfg.label}" title="Clear"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+  }
+  return `<div class="slot ${slot}${act?' active':''}${locked?' locked':''}" data-slot="${slot}">
+    <button class="slot-main" data-act="pick" data-slot="${slot}" aria-pressed="${act}" title="${esc(cfg.def)}">
+      <kbd class="kb">${cfg.key}</kbd>
+      <span class="stack"><span class="sl">${cfg.label}<kbd class="key">${cfg.key}</kbd>${off}${un}</span>${val}</span>
+    </button><div class="acts">${acts}</div></div>`;
+}
+function renderSlots(){
+  const d=cur();
+  setHTML(el.slots,'slots',SLOTS.map(s=>slotHTML(s,d)).join('')+`<!--${S.idx}-->`);
+}
+
+function renderNote(){
+  const d=cur(),n=NOTES[S.idx],tk=n.tk;
+  const cs=S.cursor?[Math.min(S.cursor.a,S.cursor.b),Math.max(S.cursor.a,S.cursor.b)]:null;
+  let h='';
+  for(const p of tk.pieces){
+    let cls='';
+    for(const s of SLOTS){
+      const v=d[s];
+      if(v&&typeof v==='object'&&applicable(d,s)&&p.s>=v.s&&p.e<=v.e){cls=(s==='target'?'t':'v')+(s==='value'&&d.vstatus==='uncertain'?' unsure':'');}
+    }
+    const txt=esc(sliceText(n,p.s,p.e));
+    if(p.tok<0) h+=cls?`<span class="gap ${cls}">${txt}</span>`:txt;
+    else{
+      const isCur=cs&&p.tok>=cs[0]&&p.tok<=cs[1];
+      h+=`<span class="tok ${cls}${isCur?' cur':''}" data-i="${p.tok}">${txt}</span>`;
+    }
+  }
+  setHTML(el.note,'note',h);
+  el.card.className='card '+(applicable(d,S.active)?'a-'+S.active:'a-none');
+}
+
+function renderHint(){
+  const d=cur();
+  let h;
+  if(S.imsg) h=`<span class="imsg ${S.imsg.tone==='info'?'info':''}" role="alert">${esc(S.imsg.text)}</span>`;
+  else{
+    const r=S.saved[S.idx];
+    const slot=applicable(d,S.active)?S.active:'value';
+    const lab=SPANS[slot].label;
+    if(r&&r.status==='skipped'&&!dirty(S.idx)) h='Skipped: type, target and value are saved as none. Pick a type to relabel.';
+    else h=`<span>Click a word to set <b class="${slot==='target'?'t':'v'}">${lab}</b>. Shift+click or drag takes several words.</span>`+
+      `<span class="hk"><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>word</span> <kbd>Shift</kbd><span>extend</span> <kbd>Space</kbd><span>mark</span> <kbd>Tab</kbd><span>switch slot</span></span>`;
+  }
+  setHTML(el.hint,'hint',h);
+}
+
+function renderTypes(){
+  const d=cur();
+  setHTML(el.types,'types',TYPES.map((t,i)=>`<button class="type" data-k="${i+1}" aria-pressed="${d.type===t.n}" aria-label="${i+1} ${t.n}: ${esc(t.gloss)}">
+    <kbd class="kb">${i+1}</kbd><span><span class="tn">${t.n}</span><span class="tg">${esc(t.gloss)}</span></span></button>`).join('')+`<!--${d.type}-->`);
+}
+
+function renderNoteRow(){
+  const d=cur(),show=noteShown(d);
+  el.noteRow.hidden=!show;
+  if(show){
+    if(el.noteIn.value!==d.note)el.noteIn.value=d.note;
+    el.noteHint.innerHTML=d.unsure?'<kbd><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg></kbd> saves as uncertain <kbd>Esc</kbd> back to keys':'<kbd><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg></kbd> completes with Value unsure <kbd>Esc</kbd> back to keys';
+    el.noteX.hidden=!d.unsure;
+  }
+}
+
+function renderBar(){
+  const i=S.idx,r=S.saved[i],isDirty=dirty(i);
+  let cls,txt;
+  if(r&&!isDirty){cls='saved';txt='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Saved, '+r.status;}
+  else if(r){cls='edited';txt='Edited, not saved';}
+  else{cls='unsaved';txt='Not saved';}
+  let h=`<span class="chip ${cls}">${txt}</span>`;
+  if(r&&r.note) h+=`<span class="snote" title="${esc(r.note)}"><b>Note:</b> ${esc(r.note)}</span>`;
+  setHTML(el.state,'state',h);
+  el.bUndo.disabled=S.history.length===0;
+  el.bDisc.disabled=!isDirty;
+  el.bUnsure.classList.toggle('on',!!cur().unsure);
+  const m=S.bmsg;
+  if(!m){el.bmsg.hidden=true;cache.delete('bmsg');}
+  else{
+    let a='';
+    if(m.action) a=`<button data-act="none" data-slot="${m.action}">Mark ${SPANS[m.action].label} as none <kbd class="kb">n</kbd></button>`;
+    const html=`<span class="mt">${esc(m.text)}</span>${a}`;
+    el.bmsg.className='bmsg '+m.tone;
+    setHTML(el.bmsg,'bmsg',html);
+    el.bmsg.hidden=false;
+  }
+}
+
+function render(){
+  renderHeader();renderSlots();renderNote();renderHint();renderTypes();renderNoteRow();renderBar();
+}
+
+/* ---------- loading / navigation ---------- */
+function load(i){
+  S.idx=i;S.cursor=null;S.lastMark=null;
+  S.active=defaultActive(cur());
+  el.noteIn.blur();
+}
+function go(delta){
+  const n=S.idx+delta;
+  if(n<0||n>=NOTES.length)return;
+  clearMsgs();load(n);render();
+}
+
+/* ---------- span marking ---------- */
+function mark(slot,ta,tb,keepCursor){
+  const d=cur(),n=NOTES[S.idx],toks=n.tk.toks;
+  if(!applicable(d,slot)){imsg(`${SPANS[slot].label} is none for ${d.type}.`);return false;}
+  const lo=Math.min(ta,tb),hi=Math.max(ta,tb);
+  const s=toks[lo].s,e=toks[hi].e;
+  const other=SLOTS.find(x=>x!==slot);
+  const o=d[other];
+  if(o&&typeof o==='object'&&applicable(d,other)&&s<o.e&&o.s<e){
+    const same=o.s===s&&o.e===e;
+    imsg(`${same?'Same text as':'Overlaps'} ${SPANS[other].label} \u201c${sliceText(n,o.s,o.e)}\u201d. ${SPANS[other].label} keeps its span; pick other words for ${SPANS[slot].label}.`);
+    return false;
+  }
+  S.imsg=null;if(S.bmsg&&S.bmsg.tone==='err')S.bmsg=null;
+  mutate(x=>{x[slot]={s,e};S.active=nextOpenAfter(x,slot);});
+  S.lastMark={idx:S.idx,slot,anchor:ta};
+  if(!keepCursor)S.cursor=null;
+  render();
+  return true;
+}
+function tokenOfSpan(slot){
+  const v=cur()[slot];if(!v||typeof v!=='object')return -1;
+  return NOTES[S.idx].tk.toks.findIndex(t=>t.s===v.s);
+}
+function clickToken(i,shift){
+  let slot=S.active;
+  if(shift){
+    const lm=S.lastMark;
+    const d=cur();
+    if(lm&&lm.idx===S.idx){
+      const v=d[lm.slot];const t=NOTES[S.idx].tk.toks[lm.anchor];
+      if(v&&typeof v==='object'&&t&&t.s>=v.s&&t.e<=v.e){mark(lm.slot,lm.anchor,i);return;}
+    }
+    const a=tokenOfSpan(slot);
+    mark(slot,a>=0?a:i,i);return;
+  }
+  if(!applicable(cur(),slot)){slot='value';S.active='value';}
+  mark(slot,i,i);
+}
+
+/* pointer: click + drag over tokens */
+function tokAt(x,y){const e=document.elementFromPoint(x,y);return e&&e.closest&&e.closest('.tok');}
+function paintDrag(){
+  const dr=S.drag;
+  el.note.querySelectorAll('.tok').forEach(t=>{
+    const i=+t.dataset.i;
+    t.classList.toggle('pre',!!dr&&dr.moved&&i>=Math.min(dr.a,dr.b)&&i<=Math.max(dr.a,dr.b));
+  });
+}
+el.note.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  const t=e.target.closest('.tok');if(!t)return;
+  hideTip();
+  S.drag={a:+t.dataset.i,b:+t.dataset.i,shift:e.shiftKey,moved:false};
+  e.preventDefault();
+});
+document.addEventListener('pointermove',e=>{
+  const dr=S.drag;if(!dr)return;
+  const t=tokAt(e.clientX,e.clientY);if(!t)return;
+  const i=+t.dataset.i;
+  if(i!==dr.b){dr.b=i;if(i!==dr.a)dr.moved=true;paintDrag();}
+});
+function endDrag(commit){
+  const dr=S.drag;S.drag=null;
+  if(!dr)return;
+  paintDrag();
+  if(!commit)return;
+  if(dr.moved&&dr.a!==dr.b){mark(S.active,dr.a,dr.b);}
+  else clickToken(dr.a,dr.shift);
+}
+document.addEventListener('pointerup',()=>endDrag(true));
+document.addEventListener('pointercancel',()=>endDrag(false));
+
+/* ---------- actions ---------- */
+function setType(k){
+  const t=typeByKey(k);if(!t)return;
+  mutate(d=>{
+    d.type=t.n;
+    if(t.n==='transfer')d.target=undefined;
+    S.active=firstOpen(d,applicable(d,S.active)?S.active:'value');
+  });
+  S.imsg=null;if(S.bmsg&&S.bmsg.tone==='err')S.bmsg=null;render();
+}
+function pickSlot(slot){
+  const d=cur();
+  if(!applicable(d,slot)){imsg(`${SPANS[slot].label} is none for ${d.type} and cannot be marked.`,'info');return;}
+  S.active=slot;S.imsg=null;render();
+}
+function cycleSlot(dir){
+  const d=cur();
+  const ok=SLOTS.filter(s=>applicable(d,s));
+  if(ok.length<2){if(ok[0])S.active=ok[0];render();return;}
+  const i=ok.indexOf(S.active);
+  S.active=ok[(i+dir+ok.length)%ok.length];
+  S.imsg=null;render();
+}
+function setNone(slot){
+  slot=slot||S.active;
+  const d=cur();
+  if(!applicable(d,slot)){imsg(`${SPANS[slot].label} is already none for ${d.type}.`,'info');return;}
+  mutate(x=>{x[slot]=null;S.active=nextOpenAfter(x,slot);});
+  S.imsg=null;S.bmsg=null;render();
+}
+function clearSlot(slot){
+  mutate(x=>{x[slot]=undefined;if(SPANS[slot].statuses)x.vstatus='complete';S.active=slot;});
+  S.imsg=null;render();
+}
+function toggleStatus(slot){
+  slot=slot||S.active;
+  if(!SPANS[slot].statuses){imsg(`${SPANS[slot].label} has no sure/unsure setting. Only Value does (press v).`,'info');return;}
+  if(!applicable(cur(),slot))return;
+  const wasUnsure=cur().vstatus==='uncertain';
+  mutate(x=>{x.vstatus=wasUnsure?'complete':'uncertain';});
+  S.imsg=null;
+  render();
+  if(!wasUnsure)focusNote();
+}
+function focusNote(){
+  renderNoteRow();
+  if(!el.noteRow.hidden){el.noteIn.focus();const l=el.noteIn.value.length;el.noteIn.setSelectionRange(l,l);}
+}
+const NEED_NOTE='Add a note: what is unclear?';
+function commit(status,advanceMsg){
+  pushHistory();
+  const d=cur(),i=S.idx;
+  let rec;
+  if(status==='skipped')rec={status,type:null,target:null,value:null,vstatus:'complete',note:''};
+  else rec={status,type:d.type,target:d.type==='transfer'?null:d.target,value:d.value,vstatus:d.vstatus,note:(d.note||'').trim()};
+  S.saved[i]=rec;delete S.drafts[i];
+  const last=i===NOTES.length-1;
+  el.noteIn.blur();
+  clearMsgs();
+  if(!last)load(i+1);else{load(i);}
+  render();
+  const what=status==='skipped'?'skipped':status==='uncertain'?'uncertain':'complete';
+  bmsg(last?`Saved \u2713 note ${i+1} as ${what}. That was the last note in the queue.`:`Saved \u2713 note ${i+1} as ${what}. Now on note ${i+2}.`,'ok',null,4500);
+}
+function tryComplete(){
+  const d=cur();
+  if(!d.type){bmsg('Can\u2019t complete: pick a type first (keys 1-8).','err');return;}
+  const miss=SLOTS.filter(s=>applicable(d,s)&&d[s]===undefined);
+  if(miss.length){
+    S.active=miss[0];
+    const names=miss.map(s=>SPANS[s].label).join(' and ');
+    el.noteIn.blur();
+    render();
+    bmsg(`Can\u2019t complete: ${names} ${miss.length>1?'are':'is'} not marked. Click a word, or mark ${SPANS[miss[0]].label} as none if the note names none.`,'err',miss[0]);
+    return;
+  }
+  if(d.vstatus==='uncertain'&&!d.note.trim()){bmsg(NEED_NOTE,'err');focusNote();return;}
+  commit('complete');
+}
+function tryUnsure(){
+  const d=cur();
+  if(!d.unsure){
+    mutate(x=>{x.unsure=true;});S.bmsg=null;render();focusNote();return;
+  }
+  if(!d.note.trim()){bmsg(NEED_NOTE,'err');focusNote();return;}
+  commit('uncertain');
+}
+function skip(){commit('skipped');}
+function discard(){
+  if(!dirty(S.idx)){return;}
+  pushHistory();
+  delete S.drafts[S.idx];
+  el.noteIn.blur();
+  clearMsgs();
+  S.cursor=null;S.active=defaultActive(cur());
+  render();bmsg('Draft discarded.','info',null,3000);
+}
+function undo(){
+  const h=S.history.pop();
+  if(!h){bmsg('Nothing to undo.','info',null,2500);return;}
+  S.saved=h.saved;S.drafts=h.drafts;S.idx=h.idx;S.active=h.active;S.cursor=null;S.lastMark=null;
+  el.noteIn.blur();clearMsgs();
+  render();bmsg('Undone.','info',null,2500);
+}
+
+/* keyboard word cursor (needed to mark spans without a mouse) */
+function moveCursor(dir,shift){
+  const n=NOTES[S.idx].tk.toks.length;if(!n)return;
+  let c=S.cursor;
+  if(!c)c=dir>0?{a:0,b:0}:{a:n-1,b:n-1};
+  else if(shift){
+    if(dir>0)c={a:c.a,b:Math.min(n-1,c.b+1)};
+    else c={a:Math.max(0,c.a-1),b:c.b};
+  }else{
+    const p=dir>0?Math.min(n-1,c.b+1):Math.max(0,c.a-1);
+    c={a:p,b:p};
+  }
+  S.cursor=c;S.imsg=null;renderNote();renderHint();
+}
+function markCursor(){
+  const c=S.cursor;
+  if(!c){imsg('Move to a word first with \u2191 / \u2193, then Space.','info');return;}
+  mark(S.active,c.a,c.b,true);
+}
+
+/* ---------- note field ---------- */
+let noteSnap=false;
+el.noteIn.addEventListener('focus',()=>{noteSnap=false;});
+el.noteIn.addEventListener('blur',()=>{noteSnap=false;});
+el.noteIn.addEventListener('input',()=>{
+  if(!noteSnap){pushHistory();noteSnap=true;}
+  const d=clone(cur());d.note=el.noteIn.value;S.drafts[S.idx]=d;
+  renderBar();
+  if(S.bmsg&&S.bmsg.text===NEED_NOTE&&d.note.trim()){S.bmsg=null;renderBar();}
+});
+el.noteX.addEventListener('click',()=>{
+  mutate(d=>{d.unsure=false;});render();
+});
+
+/* ---------- help ---------- */
+function buildHelp(){
+  const keys=[['1-8','pick the type'],['t / v / Tab','choose Target or Value slot'],['\u2191 \u2193','move the word cursor'],['Shift + \u2191 \u2193','extend the cursor over several words'],['Space','mark the cursor words into the active slot'],['n','mark the active slot as none'],['c','toggle Value sure / unsure (asks for a note)'],['Enter','Complete and go to the next note'],['u','Unsure: opens the note field; press u again to save'],['s','Skip: saves everything as none'],['z','Undo the last change or save'],['\u2190 \u2192','previous / next note (drafts are kept)'],['Esc','discard this note\u2019s draft (in the note field: back to keys)'],['?','this panel']];
+  let h='<h3>Keys</h3><div class="kl">'+keys.map(([k,t])=>`<span>${k.split(' ').map(x=>/^[a-zA-Z0-9\u2190-\u2193?\-]+$/.test(x)?`<kbd>${x}</kbd>`:x).join(' ')}</span><span>${t}</span>`).join('')+'</div>';
+  h+='<p style="color:var(--mut);margin:8px 0 0">Mouse: click a word to fill the lit slot, Shift+click or drag for several words. A click on a slot lights it; &times; clears it.</p>';
+  h+='<h3>Types</h3><dl>'+TYPES.map((t,i)=>`<dt>${i+1} ${t.n}</dt><dd>${esc(t.def)}</dd>`).join('')+'</dl>';
+  h+='<h3>Spans</h3><dl>'+SLOTS.map(s=>`<dt>${SPANS[s].label}</dt><dd>${esc(SPANS[s].def)}</dd>`).join('')+'</dl>';
+  h+='<h3>Statuses</h3><dl>'+Object.entries(STATUS_DEF).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')+'</dl>';
+  el.helpBody.innerHTML=h;
+}
+function setHelp(open){
+  el.help.hidden=!open;
+  el.helpBtn.setAttribute('aria-expanded',open);
+  hideTip();
+}
+const helpOpen=()=>!el.help.hidden;
+
+/* ---------- tooltip for type definitions ---------- */
+let tipT=0;
+function showTip(btn){
+  const k=+btn.dataset.k,t=typeByKey(k);if(!t)return;
+  clearTimeout(tipT);
+  tipT=setTimeout(()=>{
+    el.tip.innerHTML=`<b>${k} ${t.n}</b>${esc(t.def)}`;
+    el.tip.hidden=false;
+    const r=btn.getBoundingClientRect(),w=el.tip.offsetWidth,h=el.tip.offsetHeight;
+    let left=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2));
+    let top=r.top-h-8;
+    if(top<64)top=Math.min(innerHeight-h-8,r.bottom+8);
+    el.tip.style.left=left+'px';el.tip.style.top=top+'px';
+  },200);
+}
+function hideTip(){clearTimeout(tipT);el.tip.hidden=true;}
+el.types.addEventListener('mouseover',e=>{const b=e.target.closest('.type');if(b)showTip(b);});
+el.types.addEventListener('mouseout',e=>{if(!e.relatedTarget||!e.relatedTarget.closest||!e.relatedTarget.closest('.type'))hideTip();});
+el.types.addEventListener('focusin',e=>{const b=e.target.closest('.type');if(b)showTip(b);});
+el.types.addEventListener('focusout',hideTip);
+
+/* ---------- click delegation ---------- */
+el.types.addEventListener('click',e=>{const b=e.target.closest('.type');if(b){hideTip();setType(+b.dataset.k);}});
+function onAct(e){
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,slot=b.dataset.slot;
+  switch(a){
+    case 'pick':pickSlot(slot);break;
+    case 'none':if(slot)S.active=applicable(cur(),slot)?slot:S.active;setNone(slot);break;
+    case 'clear':clearSlot(slot);break;
+    case 'toggle':toggleStatus(slot);break;
+    case 'prev':go(-1);break;
+    case 'next':go(1);break;
+    case 'complete':tryComplete();break;
+    case 'unsure':tryUnsure();break;
+    case 'skip':skip();break;
+    case 'undo':undo();break;
+    case 'discard':discard();break;
+  }
+  if(b.blur&&a!=='pick')b.blur();
+}
+el.slots.addEventListener('click',onAct);
+$('foot').addEventListener('click',onAct);
+el.helpBtn.addEventListener('click',()=>setHelp(!helpOpen()));
+$('helpClose').addEventListener('click',()=>setHelp(false));
+
+/* ---------- keyboard: ONLY 1-8 t v Tab n c Enter u s z <- -> ? Esc (+ up/down/Space word cursor) ---------- */
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key;
+  if(e.target===el.noteIn){
+    if(k==='Enter'){e.preventDefault();if(cur().unsure)tryUnsure();else tryComplete();}
+    else if(k==='Escape'){e.preventDefault();el.noteIn.blur();}
+    else if(k==='Tab')e.preventDefault();
+    return;
+  }
+  if(helpOpen()){
+    if(k==='Escape'||k==='?'){e.preventDefault();setHelp(false);}
+    return;
+  }
+  if(/^[1-8]$/.test(k)){e.preventDefault();setType(+k);return;}
+  const lk=k.length===1?k.toLowerCase():k;
+  switch(lk){
+    case 't':e.preventDefault();pickSlot('target');break;
+    case 'v':e.preventDefault();pickSlot('value');break;
+    case 'Tab':e.preventDefault();cycleSlot(e.shiftKey?-1:1);break;
+    case 'n':e.preventDefault();setNone();break;
+    case 'c':e.preventDefault();toggleStatus();break;
+    case 'Enter':e.preventDefault();if(!e.repeat)tryComplete();break;
+    case 'u':e.preventDefault();if(!e.repeat)tryUnsure();break;
+    case 's':e.preventDefault();if(!e.repeat)skip();break;
+    case 'z':e.preventDefault();if(!e.repeat)undo();break;
+    case 'ArrowLeft':e.preventDefault();go(-1);break;
+    case 'ArrowRight':e.preventDefault();go(1);break;
+    case 'ArrowDown':e.preventDefault();moveCursor(1,e.shiftKey);break;
+    case 'ArrowUp':e.preventDefault();moveCursor(-1,e.shiftKey);break;
+    case ' ':e.preventDefault();markCursor();break;
+    case '?':e.preventDefault();setHelp(true);break;
+    case 'Escape':e.preventDefault();discard();break;
+  }
+});
+
+/* debug handle for the verification run (read-only snapshot) */
+window.__proto={state:()=>({idx:S.idx,saved:S.saved,draft:cur(),active:S.active}),tokens:i=>NOTES[i].tk.toks.map(t=>sliceText(NOTES[i],t.s,t.e)+'['+t.s+','+t.e+')')};
+
+buildHelp();
+load(0);
+render();
+})();
+</script>
+</body>
+</html>

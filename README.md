@@ -1,14 +1,30 @@
-# Quet web
+# quet-web
 
-Web companion to [Quet](https://github.com/8bu/quet) so outside collaborators can do
-`quet annotate`-style labelling in a browser. Cloudflare Worker + D1 on `quet.8bu.dev`.
+quet-web is the web companion of [Quet](https://github.com/8bu/quet), the terminal labelling tool (quet-tui).
+Outside collaborators use it to label text in a browser. They do not need to install Quet.
 
-- `docs/contract.md` — the interface every slice codes against (API, D1 schema, formats).
-- `docs/deploy.md` — infrastructure and dashboard actions taken.
-- `src/shared/schema.ts` — Quet schema/label logic shared by Worker and browser.
-- `src/worker/` — Hono Worker (admin API behind Cloudflare Access, collaborator API behind sessions).
-- `public/`, `src/web/` — vanilla TypeScript front ends.
-- `prototypes/` — labelling UI design iterations.
+It runs on a Cloudflare Worker with a D1 database at `quet.8bu.dev`.
+
+## How it works
+
+1. The owner pushes a project from Quet: `quet web push`.
+2. The owner creates a collaborator account in the admin dashboard (`/admin`) and assigns the project.
+3. The collaborator signs in and labels the notes in the browser.
+4. The owner pulls the labels back to Quet: `quet web pull`. The labels use the same format as `quet annotate`.
+
+## Access
+
+- **Admin:** Cloudflare Access protects the dashboard and the admin API. The Quet CLI uses a service token.
+- **Collaborators:** username and password, with a session cookie.
+
+## Labelling screen
+
+- One screen. No scroll on desktop or phone.
+- Click a word to mark a span. Shift+click or drag marks several words.
+- Number keys pick the type. Enter saves and opens the next note.
+- Unsure labels and unsure spans need a note.
+
+## Development
 
 ```sh
 npm install
@@ -17,5 +33,12 @@ npm run migrate:local
 npm run dev
 ```
 
-Quet CLI/TUI integration (`quet web push|pull|list`) is implemented in the Quet repo; see
-`docs/contract.md` for the API it targets.
+Run the checks with `npm run typecheck` and `npx vitest run`. Deploy with `npm run deploy`.
+
+## Docs
+
+- [docs/contract.md](docs/contract.md): API, D1 schema, label format, and labelling screen.
+- [docs/deploy.md](docs/deploy.md): Cloudflare setup and production checks.
+- [docs/research/](docs/research/): research for the labelling screen.
+- [prototypes/](prototypes/): design prototypes of the labelling screen.
+- Quet CLI and TUI: [8bu/quet](https://github.com/8bu/quet) (`quet web` commands).
