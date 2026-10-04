@@ -143,51 +143,21 @@ offsets hold through the browser, D1 and the CLI. The admin view reported `reade
    `BREAKING CHANGE:` footer bumps the major version (while the version is below 1.0, a breaking
    change bumps the minor version). Other types (`docs:`, `chore:`, `test:`) do not release.
 2. The `Release` workflow (`.github/workflows/release.yml`) opens or updates a release PR. The PR
-   bumps `package.json` and `package-lock.json` and writes `CHANGELOG.md`. The first release is
-   `0.1.0`.
+   bumps `package.json` and `package-lock.json` and writes `CHANGELOG.md`.
 3. Merge the release PR. Release Please tags `vX.Y.Z` and creates the GitHub release.
-4. In the same run, the `Deploy` workflow (`.github/workflows/deploy.yml`) starts for that tag. It
-   runs the CI checks (`ci.yml`: typecheck, vitest, build), then applies D1 migrations
-   (`wrangler d1 migrations apply quet-web --remote`), then runs `wrangler deploy`.
+4. Deploy by hand from the tag (CI does not deploy):
 
-Pushes to `main` and pull requests also run `ci.yml` alone. To deploy without a release, open
-Actions → Deploy → Run workflow and enter a ref (default `main`). Every deploy job uses the
-`production` environment and one concurrency group, so two deploys never overlap.
+   ```sh
+   git pull --tags && git checkout vX.Y.Z
+   npx wrangler d1 migrations apply quet-web --remote   # only if there are new migrations
+   npm run deploy                                       # needs QUET_DOMAIN, see "Custom domain"
+   ```
+
+Pushes to `main` and pull requests run `ci.yml` (typecheck, vitest, build).
 
 Release Please uses the default `GITHUB_TOKEN`. GitHub does not start other workflows from events
 that token creates, so the release PR does not run CI by itself. Close and reopen the PR to run CI
-on it. For the same reason, the deploy is called directly from the `Release` workflow and not from a
-`release: published` trigger.
+on it.
 
-### Repository secret for the domain
-
-Add the secret `QUET_DOMAIN` in Settings → Secrets and variables → Actions (repository or
-`production` environment). The value is the host name of the custom domain, for example
-`quet.example.com` (no scheme, no path). It is a secret, not a variable, so GitHub masks it in the
-public deploy logs.
-
-`deploy.yml` stops with an error before the deploy step if the secret is empty.
-
-### Repository secrets
-
-Add one secret in Settings → Secrets and variables → Actions:
-
-| Secret | Value |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | API token from the steps below |
-
-The account ID is not secret. `deploy.yml` sets `CLOUDFLARE_ACCOUNT_ID` as a plain value
-(`d3fc0198c8197514b262b12e3c6639a4`). You can store the token on the `production` environment
-(Settings → Environments → production) to scope it to deploys.
-
-Also enable Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create
-and approve pull requests". Release Please needs it to open the release PR.
-
-### Create the Cloudflare API token
-
-1. Open Cloudflare dashboard → My Profile → API Tokens → Create Token.
-2. Pick the **Edit Cloudflare Workers** template.
-3. Add one more permission: Account → **D1** → **Edit**. Migrations need it.
-4. Under Account Resources, include account `71Z`. Under Zone Resources, include the zone of your
-   custom domain (the template already sets this for the custom domain route).
-5. Create the token, copy it once, and save it as the `CLOUDFLARE_API_TOKEN` secret.
+Settings → Actions → General → Workflow permissions must allow "GitHub Actions to create and
+approve pull requests". Release Please needs it to open the release PR.

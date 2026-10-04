@@ -42,9 +42,9 @@ npm run dev
 
 Run the checks with `npm run typecheck` and `npx vitest run`.
 
-GitHub Actions runs the checks, versions each release, and deploys it. To deploy by hand, set `QUET_DOMAIN` (the custom domain, for example
+GitHub Actions runs the checks and versions each release. Deploy by hand: set `QUET_DOMAIN` (the custom domain, for example
 `quet.example.com`) in your shell or in a gitignored `.deploy.env` file (see `.deploy.env.example`),
-then run `npm run deploy`. In GitHub, set the repository secret `QUET_DOMAIN`. See [Release](docs/deploy.md#release) for the full flow.
+then run `npm run deploy`. See [Release](docs/deploy.md#release) for the full flow.
 
 ## Docs
 
