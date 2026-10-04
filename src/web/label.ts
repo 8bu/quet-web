@@ -80,7 +80,7 @@ class ApiError extends Error {
 const PAGE = 200;
 const COMPLETE = 'complete';
 const UNSURE = 'uncertain';
-const RESERVED_KEYS = new Set(['n', 'c', 'u', 's', 'z']);
+const RESERVED_KEYS = new Set(['n', 'c', 'u', 's', 'z', 'g']);
 const NEED_NOTE = 'Add a note: what is unclear?';
 const svg = (d: string): string =>
   `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -88,6 +88,7 @@ const ICON_CHECK = svg('<path d="M20 6 9 17l-5-5"/>');
 const ICON_X = svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>');
 const ICON_SPARK = svg('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>');
 const ICON_ENTER = svg('<path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/>');
+const ICON_INFO = svg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>');
 
 const esc = (s: string): string =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
@@ -129,6 +130,8 @@ const $ = {
   bDisc: el<HTMLButtonElement>('bDisc'),
   bUnsure: el<HTMLButtonElement>('bUnsure'),
   prop: el('prop'),
+  done: el('done'),
+  tail: el('tail'),
 };
 
 mountThemePicker(el('themePicker'));
@@ -189,6 +192,10 @@ let unsureOk = false;
 let skipStatus: string | null = null;
 const drafts = new Map<number, Draft>();
 let history: Hist[] = [];
+/** Done screen shown in place of the note card (every note labelled). */
+let done = false;
+/** Set by a save on the last note while notes are unlabelled; cleared when the person moves. */
+let tailPrompt = false;
 
 // ---------------------------------------------------------------------------
 // Schema-derived helpers
@@ -436,7 +443,9 @@ function renderHeader(): void {
     $.segs.appendChild(bar);
   }
   bar.style.width = `${total > 0 ? ((labelled / total) * 100).toFixed(2) : 0}%`;
-  setHTML($.count, 'count', `<span class="cl">Note </span>${idx + 1} of ${total}<small>${labelled} saved</small>`);
+  const all = allLabelled();
+  const pos = done ? `${labelled} of ${total}` : `<span class="cl">Note </span>${idx + 1} of ${total}`;
+  setHTML($.count, 'count', `${pos}${all ? '<span class="dn">&middot; done</span>' : `<small>${labelled} saved</small>`}`);
 }
 
 function slotHTML(k: number, d: Draft): string {
@@ -658,8 +667,58 @@ function renderBar(): void {
   }
 }
 
+/** True once every note of the whole project is loaded and has my label. */
+const allLabelled = (): boolean => recs.length >= total && labelled === recs.length;
+
+/** Next note without my label after `from`, wrapping round the queue; -1 when none (loaded notes only). */
+function nextUnlabelled(from: number): number {
+  for (let o = 1; o <= recs.length; o++) {
+    const i = (from + o) % recs.length;
+    if (!recs[i]!.label) return i;
+  }
+  return -1;
+}
+
+/** Where Review starts: the first uncertain note, else note 1. */
+const reviewStart = (): number => Math.max(0, recs.findIndex((r) => r.label?.annotation_status === UNSURE));
+
+function renderDone(): void {
+  const by = new Map<string, number>();
+  for (const r of recs) if (r.label) by.set(r.label.annotation_status, (by.get(r.label.annotation_status) ?? 0) + 1);
+  const unsure = by.get(UNSURE) ?? 0;
+  const counts = S.statuses.map((s) => `<li><b>${by.get(s.name) ?? 0}</b><span>${esc(cap(s.name))}</span></li>`).join('');
+  setHTML(
+    $.done,
+    'done',
+    `<div class="done-ic">${ICON_CHECK}</div>` +
+      `<h1>All ${total} ${total === 1 ? 'note' : 'notes'} labelled</h1>` +
+      `<p class="done-sub">Every note in this project has your label.${unsure > 0 ? ` Review starts at the first ${esc(UNSURE)} note.` : ''}</p>` +
+      `<ul class="done-counts">${counts}</ul>` +
+      '<div class="done-act"><button class="btn lg primary" type="button" data-act="review">Review notes</button>' +
+      '<a class="btn lg" href="/">Back to projects</a></div>' +
+      '<p class="done-keys hk"><kbd>Enter</kbd><span>back to projects</span><kbd>&larr;</kbd><span>review last note</span><kbd>z</kbd><span>undo</span></p>',
+  );
+}
+
+function renderTail(): void {
+  const n = recs.length - labelled;
+  const show = tailPrompt && n > 0;
+  $.tail.hidden = !show;
+  if (!show) return;
+  setHTML(
+    $.tail,
+    'tail',
+    `${ICON_INFO}<span class="tt"><b>${n}</b> ${n === 1 ? 'note is' : 'notes are'} still unlabelled.</span>` +
+      '<button class="btn sm primary" type="button" data-act="nextOpen">Go to next unlabelled <kbd class="kb">g</kbd></button>',
+  );
+}
+
 function render(): void {
   renderHeader();
+  $.stage.classList.toggle('is-done', done);
+  $.done.hidden = !done;
+  $.foot.hidden = done;
+  if (done) return renderDone();
   renderSlots();
   renderNote();
   renderHint();
@@ -667,6 +726,31 @@ function render(): void {
   renderProp();
   renderNoteRow();
   renderBar();
+  renderTail();
+}
+
+function showDone(): void {
+  done = true;
+  tailPrompt = false;
+  $.noteIn.blur();
+  clearMsgs();
+  render();
+  $.done.focus({ preventScroll: true });
+}
+
+/** Leave the done screen (or the tail callout) and open note `i`. */
+function openNote(i: number): void {
+  done = false;
+  clearMsgs();
+  load(i);
+  render();
+}
+
+/** Callout action and `g`: only while the callout is on screen. */
+function gotoNextUnlabelled(): void {
+  if (busy || done || !tailPrompt) return;
+  const i = nextUnlabelled(idx);
+  if (i >= 0) openNote(i);
 }
 
 // ---------------------------------------------------------------------------
@@ -675,6 +759,7 @@ function render(): void {
 
 function load(i: number): void {
   idx = i;
+  tailPrompt = false;
   cursor = null;
   lastMark = null;
   active = defaultActive(cur());
@@ -893,18 +978,26 @@ async function commit(status: string, d: Draft = cur()): Promise<void> {
     const out = await api<{ label?: Label }>('PUT', `${base}/labels/${encodeURIComponent(r.id)}`, { label });
     history.push({ kind: 'save', idx: i, id: r.id, prevLabel: r.label, prevDraft: drafts.has(i) ? clone(drafts.get(i)!) : undefined, active });
     if (history.length > 200) history.shift();
+    const wasAll = allLabelled();
     r.label = out.label ?? label;
     drafts.delete(i);
     recount();
     const last = i >= recs.length - 1;
     $.noteIn.blur();
     clearMsgs();
+    // Done only when this save finishes the project (or re-saves the last note while reviewing),
+    // so editing a middle note during Review keeps moving on.
+    if (allLabelled() && (!wasAll || last)) {
+      showDone();
+      return;
+    }
     load(last ? i : i + 1);
+    tailPrompt = last && recs.length >= total;
     render();
     const what = status === COMPLETE ? 'complete' : status;
     bmsg(
       last
-        ? `Saved \u2713 note ${i + 1} as ${what}.${i + 1 >= total ? ' That was the last note in the queue.' : ''}`
+        ? `Saved \u2713 note ${i + 1} as ${what}.${recs.length < total ? ' Loading more notes\u2026' : ''}`
         : `Saved \u2713 note ${i + 1} as ${what}. Now on note ${i + 2}.`,
       'ok',
       undefined,
@@ -1041,6 +1134,8 @@ async function undo(): Promise<void> {
       renderBar();
     }
   }
+  done = false;
+  tailPrompt = false;
   idx = h.idx;
   active = h.active;
   cursor = null;
@@ -1130,6 +1225,7 @@ function buildHelp(): void {
     [k('s'), 'Skip: saves type and spans as none'],
     [k('z'), 'Undo the last change or save'],
     [`${k('\u2190')} ${k('\u2192')}`, 'previous / next note (drafts are kept)'],
+    [k('g'), 'jump to the next unlabelled note (offered after you save the last note). When every note is labelled: Enter goes to your projects, \u2190 reviews the last note'],
     [k('Esc'), 'discard this note\u2019s draft (in the note field: back to keys)'],
     [k('?'), 'this panel'],
   ];
@@ -1274,12 +1370,19 @@ function onAct(e: Event): void {
     case 'pLoad':
       loadProposal();
       break;
+    case 'review':
+      openNote(reviewStart());
+      break;
+    case 'nextOpen':
+      gotoNextUnlabelled();
+      break;
   }
   if (a !== 'pick') b.blur();
 }
 $.slots.addEventListener('click', onAct);
 $.foot.addEventListener('click', onAct);
 $.prop.addEventListener('click', onAct);
+$.done.addEventListener('click', onAct);
 $.helpBtn.addEventListener('click', () => setHelp(Boolean($.help.hidden)));
 el('helpClose').addEventListener('click', () => setHelp(false));
 
@@ -1290,7 +1393,8 @@ document.addEventListener('pointerdown', () => {
   touched = true;
 }, true);
 
-// ONLY: 1-9 (types), the slot keys, Tab, n, c, Enter, u, s, z, p / P (proposals), arrows, Space (word cursor), ?, Esc
+// ONLY: 1-9 (types), the slot keys, Tab, n, c, Enter, u, s, z, g (next unlabelled, only while offered), p / P (proposals), arrows, Space (word cursor), ?, Esc
+// Done screen: Enter (projects), left (review last note), z (undo), ?
 document.addEventListener('keydown', (e) => {
   if (!ready || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
   const k = e.key;
@@ -1309,6 +1413,25 @@ document.addEventListener('keydown', (e) => {
     if (k === 'Escape' || k === '?') {
       e.preventDefault();
       setHelp(false);
+    }
+    return;
+  }
+  if (done) {
+    const onCtl = document.activeElement instanceof HTMLButtonElement || document.activeElement instanceof HTMLAnchorElement;
+    if (k === 'Enter') {
+      if (!onCtl) {
+        e.preventDefault();
+        location.href = '/';
+      }
+    } else if (k === 'ArrowLeft') {
+      e.preventDefault();
+      if (!busy) openNote(recs.length - 1);
+    } else if (k === 'z' || k === 'Z') {
+      e.preventDefault();
+      if (!e.repeat) void undo();
+    } else if (k === '?') {
+      e.preventDefault();
+      setHelp(true);
     }
     return;
   }
@@ -1362,6 +1485,10 @@ document.addEventListener('keydown', (e) => {
     case 'z':
       e.preventDefault();
       if (!e.repeat) void undo();
+      break;
+    case 'g':
+      e.preventDefault();
+      if (!busy) gotoNextUnlabelled();
       break;
     case 'ArrowLeft':
       e.preventDefault();
@@ -1456,7 +1583,10 @@ async function loadRest(): Promise<void> {
   }
   total = recs.length;
   setLoadNote('');
-  renderHeader();
+  if (autoPlace && !touched && allLabelled()) {
+    autoPlace = false;
+    showDone();
+  } else renderHeader();
 }
 
 function assignSlotKeys(): void {
@@ -1530,7 +1660,8 @@ async function boot(): Promise<void> {
   $.stage.hidden = false;
   $.foot.hidden = false;
   ready = true;
-  render();
+  if (open < 0 && recs.length >= total) showDone();
+  else render();
   void loadRest();
 }
 

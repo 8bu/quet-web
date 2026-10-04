@@ -208,12 +208,22 @@ schema; nothing is hard-coded. A type's chip gloss is the first clause of its de
   span name, e.g. `t` target, `v` value) and `tab`/`shift+tab` choose the slot; `n` none for the active
   slot; `c` changes the active span's status (sure/unsure); `enter` complete; `u` unsure; `s` skip;
   `z` undo; `left`/`right` previous/next note; `up`/`down` + `shift` + `space` mark by keyboard;
-  `?` help; `esc` discard the draft. Every key is printed on its control.
+  `?` help; `esc` discard the draft; `g` next unlabelled note (only while the end-of-queue callout is
+  shown). Every key is printed on its control.
 - Save: `enter` saves `complete` and moves to the **next note in queue order** (the screen opens on the
   first note without a label). `u` opens the note field, a second `u` saves `uncertain`; `s` saves the
   first `null_label_statuses` status (type and every span null, no note). Drafts survive `left`/`right`.
   A persistent chip shows `Not saved` / `Saved, <status>` / `Edited, not saved`; a saved note shows
   by the chip.
+- **End of queue:** "labelled" means the whole project (all pages loaded, `total` from the items
+  response), not only the page on screen. A save that leaves no unlabelled note replaces the note card
+  with a **done screen**: check icon, `All N notes labelled`, a count per schema status, `Review notes`
+  (opens the first `uncertain` note, else note 1) and `Back to projects` (`/`); `enter` = projects,
+  `left` = review the last note, `z` = undo. The header reads `N of N · done`. Saving a middle note
+  during Review does not bring the done screen back; saving the last note does. A save on the last note
+  while others are unlabelled shows a callout with the count and `Go to next unlabelled` (`g`), which
+  wraps to the first unlabelled note. A project that is fully labelled on load opens the done screen.
+  No API or label change.
 - **Web-only rule:** complete is refused (inline, at the action bar) while the type is missing or an
   applicable span is unmarked; the person marks it or presses `n`. `u` and `s` are never gated.
 - **Note (Quet `note` key):** the note field appears on `u`, when a span status is set to
